@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { StairModel, Loop, Face, Point } from './types';
+import { StairModel, Loop, Face, Point, RenderingMode } from './types';
 
 /**
  * Create a rectangle mesh from points
@@ -76,14 +76,60 @@ function isHorizontalLoop(loop: Loop): boolean {
 }
 
 /**
+ * Create a non-rectangular face mesh from points
+ */
+export function createFace(
+  points: Point[], 
+  color: number
+): THREE.Mesh {
+  // Create geometry using BufferGeometry for arbitrary 3D face
+  const geometry = new THREE.BufferGeometry();
+  
+  // Create vertices
+  const vertices = [];
+  for (const point of points) {
+    vertices.push(point.x, point.y, point.z);
+  }
+  
+  // Create triangulation (simple fan triangulation)
+  const indices = [];
+  for (let i = 1; i < points.length - 1; i++) {
+    indices.push(0, i, i + 1);
+  }
+  
+  // Set attributes
+  geometry.setIndex(indices);
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+  
+  // Compute normals
+  geometry.computeVertexNormals();
+  
+  // Create material
+  const material = new THREE.MeshLambertMaterial({ 
+    color, 
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.9,
+    emissive: new THREE.Color(color).multiplyScalar(0.2)
+  });
+  
+  // Create mesh
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.userData.isStairModelPart = true;
+  
+  return mesh;
+}
+
+/**
  * Visualize a stair model
  */
 export function visualizeStairModel(
   scene: THREE.Scene, 
   stairModel: StairModel,
-  updateInfoText: (text: string) => void
+  updateInfoText: (text: string) => void,
+  renderingMode: RenderingMode = RenderingMode.ALL_FACES
 ): number {
-  console.log(`Visualizing stair model: ${stairModel.name}`);
+  console.log(`Visualizing stair model: ${stairModel.name}, Mode: ${renderingMode}`);
   
   // Remove any existing model group and create a new one
   scene.children.forEach(child => {
@@ -104,8 +150,10 @@ export function visualizeStairModel(
     }
   });
   
-  // Count horizontal rectangles for info
+  // Count faces for info
   let horizontalRectangleCount = 0;
+  let totalFaceCount = 0;
+  
   const colors = [0x4287f5, 0x42f5a7, 0xf542cb, 0xf5a742, 0xf54242, 0x42f5dd];
   let colorIndex = 0;
   
@@ -129,29 +177,57 @@ export function visualizeStairModel(
     solid.faces.forEach(face => {
       // Process loops in the face
       face.loops.forEach(loop => {
-        // Check if this is a horizontal loop
-        if (isHorizontalLoop(loop)) {
-          horizontalRectangleCount++;
-          
+        const isHorizontalRectangle = isHorizontalLoop(loop);
+        totalFaceCount++;
+        
+        // Determine if we should render this face based on the rendering mode
+        let shouldRender = false;
+        if (renderingMode === RenderingMode.ALL_FACES) {
+          shouldRender = true;
+        } else if (renderingMode === RenderingMode.FLAT_RECTANGLES) {
+          shouldRender = isHorizontalRectangle;
+        }
+        
+        if (shouldRender) {
           // Get points from the loop
           const points = getPointsFromLoop(loop);
           
-          // Get z-coordinate from the first point
-          const z = points[0].z;
-          
-          // Convert to 2D points for ShapeGeometry, centered on model center
-          const points2D = points.map(p => ({ 
-            x: p.x - centerX, 
-            y: p.y - centerY 
-          }));
-          
-          // Create rectangle mesh with cycling colors
+          // Choose color
           const color = colors[colorIndex % colors.length];
-          const rectangleMesh = createRectangle(points2D, z - centerZ, color);
           colorIndex++;
           
-          // Add to model group
-          modelGroup.add(rectangleMesh);
+          if (isHorizontalRectangle) {
+            horizontalRectangleCount++;
+            
+            // Get z-coordinate from the first point
+            const z = points[0].z;
+            
+            // Convert to 2D points for ShapeGeometry, centered on model center
+            const points2D = points.map(p => ({ 
+              x: p.x - centerX, 
+              y: p.y - centerY 
+            }));
+            
+            // Create rectangle mesh
+            const rectangleMesh = createRectangle(points2D, z - centerZ, color);
+            
+            // Add to model group
+            modelGroup.add(rectangleMesh);
+          } else if (renderingMode === RenderingMode.ALL_FACES) {
+            // For non-rectangular faces
+            // Adjust points to be relative to model center
+            const centeredPoints = points.map(p => ({
+              x: p.x - centerX,
+              y: p.y - centerY,
+              z: p.z - centerZ
+            }));
+            
+            // Create non-rectangular face mesh
+            const faceMesh = createFace(centeredPoints, color);
+            
+            // Add to model group
+            modelGroup.add(faceMesh);
+          }
         }
       });
     });
@@ -164,14 +240,17 @@ export function visualizeStairModel(
   console.log('Model size:', size);
   console.log('Model center after processing:', center);
   
-  console.log(`Found ${horizontalRectangleCount} horizontal rectangles`);
-  
-  // Update info text
-  const infoContent = `Stair Model: ${stairModel.name} (ID: ${stairModel.id})\nFound ${horizontalRectangleCount} horizontal rectangles`;
+  // Update info text based on rendering mode
+  let infoContent = `Stair Model: ${stairModel.name} (ID: ${stairModel.id})\n`;
+  if (renderingMode === RenderingMode.ALL_FACES) {
+    infoContent += `Showing all faces (${totalFaceCount} faces total)`;
+  } else {
+    infoContent += `Showing only flat rectangles (${horizontalRectangleCount} of ${totalFaceCount} faces)`;
+  }
   updateInfoText(infoContent);
   
-  // Return the count of horizontal rectangles
-  return horizontalRectangleCount;
+  // Return the count of rendered faces
+  return renderingMode === RenderingMode.FLAT_RECTANGLES ? horizontalRectangleCount : totalFaceCount;
 }
 
 /**

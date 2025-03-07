@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { CameraState, MovementState, StairModel } from './types';
+import { CameraState, MovementState, StairModel, RenderingMode } from './types';
 import { 
   initializeScene, 
   initializeRenderer,
@@ -19,7 +19,7 @@ import {
   visualizeStairModel, 
   loadStairModels 
 } from './ModelRenderer';
-import { InfoPanel, ControlsPanel, CameraInfo } from './UIComponents';
+import { InfoPanel, ControlsPanel, CameraInfo, RenderingModeToggle } from './UIComponents';
 
 // Add some global styles to ensure the canvas is visible
 const globalStyles = `
@@ -85,6 +85,7 @@ export default function StairVisualizer() {
   const [stairModels, setStairModels] = useState<StairModel[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [loadingText, setLoadingText] = useState<string>("Loading stair model...");
+  const [renderingMode, setRenderingMode] = useState<RenderingMode>(RenderingMode.ALL_FACES);
   
   // Animation frame management
   const requestRef = useRef<number | null>(null);
@@ -239,7 +240,8 @@ export default function StairVisualizer() {
         visualizeStairModel(
           sceneRef.current, 
           model,
-          (text) => setLoadingText(text)
+          (text) => setLoadingText(text),
+          renderingMode
         );
         
         // Only set camera position on initial load
@@ -273,12 +275,18 @@ export default function StairVisualizer() {
     } else {
       console.warn(`Model not found: ${selectedModelId}`);
     }
-  }, [selectedModelId, stairModels]);
+  }, [selectedModelId, stairModels, renderingMode]);
   
   // Handle model selection
   const handleModelChange = (modelId: string) => {
     console.log(`Model selection changed to: ${modelId}`);
     setSelectedModelId(modelId);
+  };
+  
+  // Handle rendering mode change
+  const handleRenderingModeChange = (mode: RenderingMode) => {
+    console.log(`Rendering mode changed to: ${mode}`);
+    setRenderingMode(mode);
   };
   
   return (
@@ -297,6 +305,10 @@ export default function StairVisualizer() {
           selectedModelId={selectedModelId || ''} 
         />
         <CameraInfo />
+        <RenderingModeToggle 
+          currentMode={renderingMode}
+          onModeChange={handleRenderingModeChange}
+        />
       </div>
     </>
   );

@@ -2,6 +2,12 @@
  * Shared types for the stair visualizer
  */
 
+// Rendering modes for the stair model
+export enum RenderingMode {
+  ALL_FACES = 'ALL_FACES',
+  FLAT_RECTANGLES = 'FLAT_RECTANGLES'
+}
+
 export interface Point {
   x: number;
   y: number;

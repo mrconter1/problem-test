@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StairModel } from './types';
+import { StairModel, RenderingMode } from './types';
 
 interface InfoPanelProps {
   loadingText: string;
@@ -173,6 +173,134 @@ export const CameraInfo: React.FC = () => {
       <p style={{ margin: '0 0 8px 0' }}>⬇️ <strong>Shift</strong>: Move down</p>
       <p style={{ margin: '0 0 8px 0' }}>🖱️ <strong>Mouse</strong>: Look around</p>
       <p style={{ margin: '0 0 0 0' }}>🐢 <strong>Right-click</strong>: Hold for 1/4 speed movement</p>
+    </div>
+  );
+};
+
+interface RenderingModeToggleProps {
+  currentMode: RenderingMode;
+  onModeChange: (mode: RenderingMode) => void;
+}
+
+/**
+ * Rendering mode toggle component (positioned in top right)
+ */
+export const RenderingModeToggle: React.FC<RenderingModeToggleProps> = ({ 
+  currentMode, 
+  onModeChange 
+}) => {
+  return (
+    <div style={{
+      position: 'absolute',
+      top: '16px',
+      right: '16px',
+      padding: '16px',
+      backgroundColor: 'rgba(0,0,0,0.8)',
+      color: 'white',
+      borderRadius: '8px',
+      fontFamily: 'Arial, sans-serif',
+      zIndex: 1000,
+      fontSize: '14px',
+      border: '1px solid #666',
+      boxShadow: '0 4px 8px rgba(0,0,0,0.5)'
+    }}>
+      <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: 'bold' }}>Rendering Mode</h3>
+      
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ position: 'relative', width: '20px', height: '20px', marginRight: '12px' }}>
+            <input
+              type="radio"
+              id="all-faces"
+              name="renderingMode"
+              checked={currentMode === RenderingMode.ALL_FACES}
+              onChange={() => onModeChange(RenderingMode.ALL_FACES)}
+              style={{ 
+                opacity: 0,
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                margin: 0,
+                cursor: 'pointer'
+              }}
+            />
+            <div style={{ 
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '18px',
+              height: '18px',
+              borderRadius: '50%',
+              border: '2px solid #4a90e2',
+              backgroundColor: 'transparent',
+              boxSizing: 'border-box',
+              pointerEvents: 'none'
+            }}/>
+            <div style={{ 
+              position: 'absolute',
+              top: '4px',
+              left: '4px',
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              backgroundColor: '#4a90e2',
+              opacity: currentMode === RenderingMode.ALL_FACES ? 1 : 0,
+              transition: 'opacity 0.2s',
+              pointerEvents: 'none'
+            }}/>
+          </div>
+          <label htmlFor="all-faces" style={{ cursor: 'pointer' }}>
+            All Faces
+          </label>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ position: 'relative', width: '20px', height: '20px', marginRight: '12px' }}>
+            <input
+              type="radio"
+              id="flat-rectangles"
+              name="renderingMode"
+              checked={currentMode === RenderingMode.FLAT_RECTANGLES}
+              onChange={() => onModeChange(RenderingMode.FLAT_RECTANGLES)}
+              style={{ 
+                opacity: 0,
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                margin: 0,
+                cursor: 'pointer'
+              }}
+            />
+            <div style={{ 
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '18px',
+              height: '18px',
+              borderRadius: '50%',
+              border: '2px solid #4a90e2',
+              backgroundColor: 'transparent',
+              boxSizing: 'border-box',
+              pointerEvents: 'none'
+            }}/>
+            <div style={{ 
+              position: 'absolute',
+              top: '4px',
+              left: '4px',
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              backgroundColor: '#4a90e2',
+              opacity: currentMode === RenderingMode.FLAT_RECTANGLES ? 1 : 0,
+              transition: 'opacity 0.2s',
+              pointerEvents: 'none'
+            }}/>
+          </div>
+          <label htmlFor="flat-rectangles" style={{ cursor: 'pointer' }}>
+            Flat Rectangles Only
+          </label>
+        </div>
+      </div>
     </div>
   );
 }; 
