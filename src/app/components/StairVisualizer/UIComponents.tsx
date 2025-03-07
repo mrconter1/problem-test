@@ -109,7 +109,6 @@ export const CameraInfo: React.FC = () => {
       <p style={{ margin: '0 0 8px 0' }}>⌨️ <strong>WASD</strong>: Move horizontally</p>
       <p style={{ margin: '0 0 8px 0' }}>🚀 <strong>Space</strong>: Move up</p>
       <p style={{ margin: '0 0 8px 0' }}>⬇️ <strong>Shift</strong>: Move down</p>
-      <p style={{ margin: '0 0 8px 0' }}>🔓 <strong>Escape</strong>: Exit mouse control</p>
       <p style={{ margin: '0 0 8px 0' }}>🖱️ <strong>Mouse</strong>: Look around</p>
     </div>
   );
