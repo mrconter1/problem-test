@@ -42,12 +42,6 @@ export function setupCameraControls(
     const isLocked = document.pointerLockElement === renderer.domElement;
     console.log('Pointer lock changed, locked:', isLocked);
     
-    // Update the control info visibility
-    const cameraInfoElement = document.getElementById('cameraInfo');
-    if (cameraInfoElement) {
-      cameraInfoElement.style.display = isLocked ? 'none' : 'block';
-    }
-    
     // Add a visual indicator when controls are active
     if (isLocked) {
       // Add a small dot in the center of the screen
