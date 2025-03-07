@@ -280,9 +280,10 @@ export default function StairVisualizer() {
           case 'KeyA': movement.left = true; break;
           case 'KeyD': movement.right = true; break;
           case 'Space': movement.up = true; break;
-          case 'ControlLeft': 
+          case 'ShiftLeft': 
+          case 'ShiftRight': 
             movement.down = true; 
-            event.preventDefault(); // Prevent browser from capturing Ctrl key
+            event.preventDefault(); // Prevent browser from capturing Shift key
             break;
           // Add Escape key to exit pointer lock
           case 'Escape':
@@ -302,7 +303,8 @@ export default function StairVisualizer() {
           case 'KeyA': movement.left = false; break;
           case 'KeyD': movement.right = false; break;
           case 'Space': movement.up = false; break;
-          case 'ControlLeft': movement.down = false; break;
+          case 'ShiftLeft': 
+          case 'ShiftRight': movement.down = false; break;
         }
       }
     });
@@ -649,7 +651,7 @@ export default function StairVisualizer() {
             <span>Mouse:</span><span>Look around</span>
             <span>W/A/S/D:</span><span>Move</span>
             <span>Space:</span><span>Up</span>
-            <span>Ctrl:</span><span>Down</span>
+            <span>Shift:</span><span>Down</span>
           </div>
         </div>
       </div>
