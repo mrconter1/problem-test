@@ -49,4 +49,8 @@ export interface MovementState {
   up: boolean;
   down: boolean;
   slowMode: boolean;
+  // Velocity components for smooth movement
+  velocityX: number;
+  velocityY: number;
+  velocityZ: number;
 } 

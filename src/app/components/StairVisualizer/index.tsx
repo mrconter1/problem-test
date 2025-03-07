@@ -74,7 +74,11 @@ export default function StairVisualizer() {
     right: false,
     up: false,
     down: false,
-    slowMode: false
+    slowMode: false,
+    // Initialize velocity components to zero
+    velocityX: 0,
+    velocityY: 0,
+    velocityZ: 0
   });
   
   // State for models and UI

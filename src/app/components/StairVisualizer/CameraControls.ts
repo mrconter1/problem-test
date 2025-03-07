@@ -219,13 +219,16 @@ export function updateCameraPosition(
   movement: MovementState, 
   cameraState: CameraState
 ): void {
-  if (!Object.values(movement).some(Boolean)) return; // Skip if no movement
-  
   // Base move speed
   const baseMoveSpeed = 0.5;
   
   // Apply slow mode if right mouse button is pressed - now 1/4 of normal speed
-  const moveSpeed = movement.slowMode ? baseMoveSpeed * 0.25 : baseMoveSpeed;
+  const targetSpeed = movement.slowMode ? baseMoveSpeed * 0.25 : baseMoveSpeed;
+  
+  // Momentum parameters - adjusted for less pronounced effect
+  const acceleration = 0.15; // Increased for faster response (was 0.08)
+  const deceleration = 0.2; // Increased for quicker stopping (was 0.12)
+  const minVelocity = 0.001; // Threshold to stop completely
   
   // Get the camera's forward and right directions
   const forward = new THREE.Vector3(0, 0, 0);
@@ -238,27 +241,80 @@ export function updateCameraPosition(
   right.z = 0; // Keep movement in XY plane
   right.normalize();
   
-  // Apply movement
+  // Calculate target velocities based on input
+  let targetVelocityX = 0;
+  let targetVelocityY = 0;
+  let targetVelocityZ = 0;
+  
+  // Apply movement inputs to target velocities
   if (movement.forward) {
-    camera.position.addScaledVector(forward, -moveSpeed);
+    targetVelocityX -= forward.x * targetSpeed;
+    targetVelocityY -= forward.y * targetSpeed;
   }
   if (movement.backward) {
-    camera.position.addScaledVector(forward, moveSpeed);
+    targetVelocityX += forward.x * targetSpeed;
+    targetVelocityY += forward.y * targetSpeed;
   }
   if (movement.left) {
-    camera.position.addScaledVector(right, -moveSpeed);
+    targetVelocityX -= right.x * targetSpeed;
+    targetVelocityY -= right.y * targetSpeed;
   }
   if (movement.right) {
-    camera.position.addScaledVector(right, moveSpeed);
+    targetVelocityX += right.x * targetSpeed;
+    targetVelocityY += right.y * targetSpeed;
   }
   
   // Up/down movement along Z axis
   if (movement.up) {
-    camera.position.z += moveSpeed;
+    targetVelocityZ = targetSpeed;
   }
   if (movement.down) {
-    camera.position.z -= moveSpeed;
+    targetVelocityZ = -targetSpeed;
   }
+  
+  // Apply acceleration/deceleration to X velocity
+  if (Math.abs(targetVelocityX) > 0) {
+    // Accelerate towards target
+    movement.velocityX += (targetVelocityX - movement.velocityX) * acceleration;
+  } else {
+    // Decelerate when no input
+    movement.velocityX *= (1 - deceleration);
+    // Stop completely if very slow
+    if (Math.abs(movement.velocityX) < minVelocity) {
+      movement.velocityX = 0;
+    }
+  }
+  
+  // Apply acceleration/deceleration to Y velocity
+  if (Math.abs(targetVelocityY) > 0) {
+    // Accelerate towards target
+    movement.velocityY += (targetVelocityY - movement.velocityY) * acceleration;
+  } else {
+    // Decelerate when no input
+    movement.velocityY *= (1 - deceleration);
+    // Stop completely if very slow
+    if (Math.abs(movement.velocityY) < minVelocity) {
+      movement.velocityY = 0;
+    }
+  }
+  
+  // Apply acceleration/deceleration to Z velocity
+  if (Math.abs(targetVelocityZ) > 0) {
+    // Accelerate towards target
+    movement.velocityZ += (targetVelocityZ - movement.velocityZ) * acceleration;
+  } else {
+    // Decelerate when no input
+    movement.velocityZ *= (1 - deceleration);
+    // Stop completely if very slow
+    if (Math.abs(movement.velocityZ) < minVelocity) {
+      movement.velocityZ = 0;
+    }
+  }
+  
+  // Apply velocity to camera position
+  camera.position.x += movement.velocityX;
+  camera.position.y += movement.velocityY;
+  camera.position.z += movement.velocityZ;
   
   // Update camera direction after position change
   updateCameraDirection(camera, cameraState);
