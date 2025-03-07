@@ -180,27 +180,24 @@ export default function StairVisualizer() {
       updateCameraDirection();
     }
     
-    // Set up pointer lock for mouse control
-    renderer.domElement.addEventListener('click', () => {
-      renderer.domElement.requestPointerLock();
-    });
-    
-    // Right-click to exit pointer lock
+    // Set up pointer lock for mouse control - left-click to toggle
     renderer.domElement.addEventListener('mousedown', (event) => {
-      // Check if it's a right-click (button 2)
-      if (event.button === 2) {
-        console.log('Right mouse button clicked');
-        event.preventDefault(); // Prevent the default context menu
-        if (document.pointerLockElement === renderer.domElement) {
-          console.log('Exiting pointer lock via right-click');
-          document.exitPointerLock();
-        }
+      // Only respond to left-click (button 0)
+      if (event.button !== 0) return;
+      
+      if (document.pointerLockElement === renderer.domElement) {
+        // If already locked, exit pointer lock
+        console.log('Exiting pointer lock via left-click');
+        document.exitPointerLock();
+      } else {
+        // If not locked, request pointer lock
+        console.log('Entering pointer lock via left-click');
+        renderer.domElement.requestPointerLock();
       }
     });
     
-    // Prevent context menu from showing up
+    // Prevent default context menu behavior
     renderer.domElement.addEventListener('contextmenu', (event) => {
-      console.log('Context menu prevented');
       event.preventDefault();
     });
     
@@ -274,13 +271,12 @@ export default function StairVisualizer() {
             movement.down = true; 
             event.preventDefault(); // Prevent browser from capturing Ctrl key
             break;
+          // Add Escape key to exit pointer lock
+          case 'Escape':
+            console.log('Exiting pointer lock via Escape key');
+            document.exitPointerLock();
+            break;
         }
-      }
-      
-      // Always handle Escape key
-      if (event.code === 'Escape' && document.pointerLockElement === renderer.domElement) {
-        console.log('Exiting pointer lock via Escape key');
-        document.exitPointerLock();
       }
     });
     
@@ -638,7 +634,7 @@ export default function StairVisualizer() {
             <span>W/A/S/D:</span><span style={{ color: '#ffdd00' }}>Move</span>
             <span>Space:</span><span style={{ color: '#ffdd00' }}>Move up</span>
             <span>Left Ctrl:</span><span style={{ color: '#ffdd00' }}>Move down</span>
-            <span>Right Click/Esc:</span><span style={{ color: '#ffdd00' }}>Exit controls</span>
+            <span>Click/Esc:</span><span style={{ color: '#ffdd00' }}>Toggle controls</span>
           </div>
           <div style={{ 
             marginTop: '8px', 
@@ -647,7 +643,7 @@ export default function StairVisualizer() {
             padding: '8px', 
             borderRadius: '4px' 
           }}>
-            Left Click to enable mouse control
+            Click to toggle mouse control
           </div>
         </div>
       </div>
