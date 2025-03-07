@@ -62,8 +62,8 @@ function getPointsFromLoop(loop: Loop): Point[] {
 function isHorizontalLoop(loop: Loop): boolean {
   if (loop.length === 0) return false;
   
-  // Check if it's a 4-line loop (rectangle)
-  if (loop.length !== 4) return false;
+  // Check if it's a 4-line or 5-line loop (rectangle or pentagon)
+  if (loop.length !== 4 && loop.length !== 5) return false;
   
   // Get z-coordinate of first point
   const z = loop[0].start.z;
