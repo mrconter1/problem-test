@@ -922,33 +922,16 @@ export function visualizeStairModel(
     }
   });
   
-  // Add specific lighting for markers if in RECTANGLES_WITH_CENTERS mode
-  if (renderingMode === RenderingMode.RECTANGLES_WITH_CENTERS) {
-    // Remove any existing marker lights
-    scene.children.forEach(child => {
-      if (child.userData && child.userData.isMarkerLight) {
-        scene.remove(child);
-      }
-    });
-    
-    // Add a directional light to better illuminate markers
-    const markerLight = new THREE.DirectionalLight(0xffffff, 1.5);
-    markerLight.position.set(0, 0, 10); // Light from above
-    markerLight.userData.isMarkerLight = true;
-    scene.add(markerLight);
-  } else {
-    // Remove any existing marker lights if not in center markers mode
-    scene.children.forEach(child => {
-      if (child.userData && child.userData.isMarkerLight) {
-        scene.remove(child);
-      }
-    });
-  }
+  // Remove any existing marker lights
+  scene.children.forEach(child => {
+    if (child.userData && child.userData.isMarkerLight) {
+      scene.remove(child);
+    }
+  });
   
   // Count faces for info
   let horizontalRectangleCount = 0;
   let closedRectangleCount = 0;
-  let centerMarkersCount = 0;
   let uppermostRectanglesCount = 0;
   let aspectRatioRectanglesCount = 0;
   let longSideLinesCount = 0;
@@ -1573,11 +1556,11 @@ export function visualizeStairModel(
               // Add to model group
               modelGroup.add(ghostMesh);
             }
-          } else if (renderingMode === RenderingMode.RECTANGLES_WITH_CENTERS) {
+          } else if (renderingMode === RenderingMode.UPPERMOST_RECTANGLES) {
             // Draw closed horizontal rectangles with center markers
             if (isRectangle && isHorizontalRectangle) {
               closedRectangleCount++;
-              centerMarkersCount++;
+              uppermostRectanglesCount++;
               
               // Choose color for rectangular face
               const color = colors[colorIndex % colors.length];
@@ -1695,8 +1678,6 @@ export function visualizeStairModel(
     infoContent += `Highlighting ${horizontalRectangleCount} flat rectangles of ${totalFaceCount} total faces`;
   } else if (renderingMode === RenderingMode.CLOSED_RECTANGLES) {
     infoContent += `Highlighting ${closedRectangleCount} closed horizontal rectangles of ${totalFaceCount} total faces`;
-  } else if (renderingMode === RenderingMode.RECTANGLES_WITH_CENTERS) {
-    infoContent += `Showing ${centerMarkersCount} closed horizontal rectangles with center markers`;
   } else if (renderingMode === RenderingMode.UPPERMOST_RECTANGLES) {
     infoContent += `Showing ${uppermostRectanglesCount} uppermost closed horizontal rectangles`;
   } else if (renderingMode === RenderingMode.ASPECT_RATIO_RECTANGLES) {
@@ -1718,8 +1699,7 @@ export function visualizeStairModel(
   // Return the count of rendered faces based on mode
   if (renderingMode === RenderingMode.FLAT_RECTANGLES) {
     return horizontalRectangleCount;
-  } else if (renderingMode === RenderingMode.CLOSED_RECTANGLES ||
-             renderingMode === RenderingMode.RECTANGLES_WITH_CENTERS) {
+  } else if (renderingMode === RenderingMode.CLOSED_RECTANGLES) {
     return closedRectangleCount;
   } else if (renderingMode === RenderingMode.UPPERMOST_RECTANGLES) {
     return uppermostRectanglesCount;
