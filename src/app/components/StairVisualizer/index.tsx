@@ -58,6 +58,7 @@ export default function StairVisualizer() {
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const modelGroupRef = useRef<THREE.Group | null>(null);
+  const isFirstLoadRef = useRef<boolean>(true);
   
   // Camera state management
   const cameraStateRef = useRef<CameraState>({
@@ -236,8 +237,8 @@ export default function StairVisualizer() {
           (text) => setLoadingText(text)
         );
         
-        // Set a better camera position to view the model
-        if (cameraRef.current) {
+        // Only set camera position on initial load
+        if (cameraRef.current && isFirstLoadRef.current) {
           // Position camera closer to the model
           cameraRef.current.position.set(30, -30, 25);
           cameraRef.current.lookAt(0, 0, 0);
@@ -256,6 +257,9 @@ export default function StairVisualizer() {
           updateCameraDirection(cameraRef.current, cameraStateRef.current);
           
           console.log('Camera positioned at:', cameraRef.current.position);
+          
+          // Set first load flag to false
+          isFirstLoadRef.current = false;
         }
       } catch (error) {
         console.error('Error visualizing model:', error);

@@ -66,7 +66,7 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({ stairModels, onMod
       border: '1px solid #666',
       boxShadow: '0 4px 8px rgba(0,0,0,0.5)'
     }}>
-      <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>Stair Models</h3>
+      <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>Current Stair Model</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         {stairModels.map((model) => (
           <div key={model.id} style={{ display: 'flex', alignItems: 'center' }}>
