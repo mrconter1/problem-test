@@ -182,6 +182,169 @@ export function createFace(
 }
 
 /**
+ * Create a center marker for a rectangle
+ */
+function createCenterMarker(
+  centerPoint: Point,
+  size: number = 0.2,
+  color: number = 0xff0000,
+  faceSize: number = 1 // Added parameter for face size
+): THREE.Mesh {
+  // Scale marker size based on face size, but with min and max bounds
+  const scaledSize = Math.max(0.2, Math.min(0.8, size * Math.sqrt(faceSize) * 0.2));
+  
+  // Create a small sphere to mark the center
+  const geometry = new THREE.SphereGeometry(scaledSize, 16, 16);
+  const material = new THREE.MeshPhongMaterial({ 
+    color, 
+    emissive: new THREE.Color(color).multiplyScalar(0.7),
+    transparent: false,
+    shininess: 80,
+    specular: 0xffffff,
+    depthTest: true
+  });
+  
+  const marker = new THREE.Mesh(geometry, material);
+  marker.position.set(centerPoint.x, centerPoint.y, centerPoint.z);
+  marker.userData.isStairModelPart = true;
+  marker.userData.isCenterMarker = true;
+  
+  // Add a small offset in the y-direction to ensure markers don't get hidden
+  marker.position.z += scaledSize * 0.5;
+  
+  return marker;
+}
+
+/**
+ * Calculate the center point of a rectangle from its points
+ */
+function calculateRectangleCenter(points: Point[]): Point {
+  if (points.length < 3) {
+    console.warn('Not enough points to calculate center');
+    return { x: 0, y: 0, z: 0 };
+  }
+  
+  // Calculate the average of all points
+  const sum = points.reduce(
+    (acc, point) => ({
+      x: acc.x + point.x,
+      y: acc.y + point.y,
+      z: acc.z + point.z
+    }),
+    { x: 0, y: 0, z: 0 }
+  );
+  
+  return {
+    x: sum.x / points.length,
+    y: sum.y / points.length,
+    z: sum.z / points.length
+  };
+}
+
+/**
+ * Calculate approximate area of a face from its points
+ */
+function calculateFaceArea(points: Point[]): number {
+  if (points.length < 3) return 0;
+  
+  // Find the two largest distances between any two points as an estimate of length and width
+  let maxDist1 = 0;
+  let maxDist2 = 0;
+  
+  for (let i = 0; i < points.length; i++) {
+    for (let j = i + 1; j < points.length; j++) {
+      const dist = Math.sqrt(
+        Math.pow(points[i].x - points[j].x, 2) +
+        Math.pow(points[i].y - points[j].y, 2) +
+        Math.pow(points[i].z - points[j].z, 2)
+      );
+      
+      if (dist > maxDist1) {
+        maxDist2 = maxDist1;
+        maxDist1 = dist;
+      } else if (dist > maxDist2) {
+        maxDist2 = dist;
+      }
+    }
+  }
+  
+  // Approximate area as product of the two largest distances
+  return maxDist1 * maxDist2;
+}
+
+/**
+ * Filter rectangles to keep only the uppermost ones when stacked
+ * @param rectangles Array of rectangles with their center points and z-coordinates
+ * @param xyTolerance Tolerance for considering rectangles to be stacked (in same x,y position)
+ * @returns Array of rectangle indices to keep
+ */
+function filterUppermostRectangles(
+  rectangles: Array<{
+    index: number;
+    center: { x: number; y: number; z: number };
+    points: Point[];
+  }>,
+  xyTolerance: number = 0.1
+): number[] {
+  // Group rectangles by similar x,y coordinates
+  const groups: { [key: string]: number[] } = {};
+  
+  // First, create an index for each rectangle
+  rectangles.forEach((rect, rectIndex) => {
+    // Check against existing groups
+    let foundGroup = false;
+    
+    Object.keys(groups).forEach(groupKey => {
+      // Get a representative rectangle from this group
+      const representativeRectIndex = groups[groupKey][0];
+      const representativeRect = rectangles[representativeRectIndex];
+      
+      // Calculate distance in XY plane
+      const xyDistance = Math.sqrt(
+        Math.pow(rect.center.x - representativeRect.center.x, 2) +
+        Math.pow(rect.center.y - representativeRect.center.y, 2)
+      );
+      
+      // If within tolerance, add to this group
+      if (xyDistance < xyTolerance) {
+        groups[groupKey].push(rectIndex);
+        foundGroup = true;
+      }
+    });
+    
+    // If no matching group, create a new one
+    if (!foundGroup) {
+      const newGroupKey = `group_${rectIndex}`;
+      groups[newGroupKey] = [rectIndex];
+    }
+  });
+  
+  // For each group, keep only the rectangle with highest Z
+  const indicesToKeep: number[] = [];
+  
+  Object.values(groups).forEach(group => {
+    if (group.length === 0) return;
+    
+    // Find rectangle with highest Z in this group
+    let highestZIndex = group[0];
+    let highestZ = rectangles[highestZIndex].center.z;
+    
+    for (let i = 1; i < group.length; i++) {
+      const currentZ = rectangles[group[i]].center.z;
+      if (currentZ > highestZ) {
+        highestZ = currentZ;
+        highestZIndex = group[i];
+      }
+    }
+    
+    // Keep only the highest rectangle
+    indicesToKeep.push(highestZIndex);
+  });
+  
+  return indicesToKeep;
+}
+
+/**
  * Visualize a stair model
  */
 export function visualizeStairModel(
@@ -211,9 +374,34 @@ export function visualizeStairModel(
     }
   });
   
+  // Add specific lighting for markers if in RECTANGLES_WITH_CENTERS mode
+  if (renderingMode === RenderingMode.RECTANGLES_WITH_CENTERS) {
+    // Remove any existing marker lights
+    scene.children.forEach(child => {
+      if (child.userData && child.userData.isMarkerLight) {
+        scene.remove(child);
+      }
+    });
+    
+    // Add a directional light to better illuminate markers
+    const markerLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    markerLight.position.set(0, 0, 10); // Light from above
+    markerLight.userData.isMarkerLight = true;
+    scene.add(markerLight);
+  } else {
+    // Remove any existing marker lights if not in center markers mode
+    scene.children.forEach(child => {
+      if (child.userData && child.userData.isMarkerLight) {
+        scene.remove(child);
+      }
+    });
+  }
+  
   // Count faces for info
   let horizontalRectangleCount = 0;
   let closedRectangleCount = 0;
+  let centerMarkersCount = 0;
+  let uppermostRectanglesCount = 0;
   let totalFaceCount = 0;
   
   const colors = [0x4287f5, 0x42f5a7, 0xf542cb, 0xf5a742, 0xf54242, 0x42f5dd];
@@ -231,198 +419,445 @@ export function visualizeStairModel(
     height: boundingBox.max.z - boundingBox.min.z
   });
   
-  // Process solids
-  console.log(`Processing ${stairModel.solids.length} solids...`);
-  stairModel.solids.forEach((solid, solidIndex) => {
-    console.log(`Solid ${solidIndex}: ${solid.faces.length} faces`);
+  // Special handling for UPPERMOST_RECTANGLES mode to filter stacked rectangles
+  if (renderingMode === RenderingMode.UPPERMOST_RECTANGLES) {
+    // First pass: collect all closed horizontal rectangles
+    const allRectangles: Array<{
+      index: number;
+      loopIndex: number;
+      solidIndex: number;
+      faceIndex: number;
+      center: { x: number; y: number; z: number };
+      points: Point[];
+      color: number;
+    }> = [];
     
-    // Process faces in the solid
-    solid.faces.forEach(face => {
-      // Process loops in the face
-      face.loops.forEach(loop => {
-        const isHorizontalRectangle = isHorizontalLoop(loop);
-        const isRectangle = isClosedRectangle(loop);
-        totalFaceCount++;
-        
-        // Get points from the loop
-        const points = getPointsFromLoop(loop);
-        
-        if (renderingMode === RenderingMode.ALL_FACES) {
-          // Choose color
-          const color = colors[colorIndex % colors.length];
-          colorIndex++;
+    let rectangleIndex = 0;
+    
+    // Process solids to collect rectangles without rendering
+    stairModel.solids.forEach((solid, solidIndex) => {
+      solid.faces.forEach((face, faceIndex) => {
+        face.loops.forEach((loop, loopIndex) => {
+          const isRectangle = isClosedRectangle(loop);
+          const isHorizontalRectangle = isHorizontalLoop(loop);
+          totalFaceCount++;
           
-          if (isHorizontalRectangle) {
-            // Get z-coordinate from the first point
-            const z = points[0].z;
-            
-            // Convert to 2D points for ShapeGeometry, centered on model center
-            const points2D = points.map(p => ({ 
-              x: p.x - centerX, 
-              y: p.y - centerY 
-            }));
-            
-            // Create rectangle mesh
-            const rectangleMesh = createRectangle(points2D, z - centerZ, color);
-            
-            // Add to model group
-            modelGroup.add(rectangleMesh);
-          } else {
-            // For non-rectangular faces
-            // Adjust points to be relative to model center
-            const centeredPoints = points.map(p => ({
-              x: p.x - centerX,
-              y: p.y - centerY,
-              z: p.z - centerZ
-            }));
-            
-            // Create non-rectangular face mesh
-            const faceMesh = createFace(centeredPoints, color);
-            
-            // Add to model group
-            modelGroup.add(faceMesh);
-          }
-        } else if (renderingMode === RenderingMode.FLAT_RECTANGLES) {
-          if (isHorizontalRectangle) {
-            horizontalRectangleCount++;
-            
-            // Choose color for rectangular face
-            const color = colors[colorIndex % colors.length];
-            colorIndex++;
-            
-            // Get z-coordinate from the first point
-            const z = points[0].z;
-            
-            // Convert to 2D points for ShapeGeometry, centered on model center
-            const points2D = points.map(p => ({ 
-              x: p.x - centerX, 
-              y: p.y - centerY 
-            }));
-            
-            // Create rectangle mesh
-            const rectangleMesh = createRectangle(points2D, z - centerZ, color);
-            
-            // Add to model group
-            modelGroup.add(rectangleMesh);
-          } else {
-            // For non-rectangular faces in FLAT_RECTANGLES mode, create with high transparency
-            // Adjust points to be relative to model center
-            const centeredPoints = points.map(p => ({
-              x: p.x - centerX,
-              y: p.y - centerY,
-              z: p.z - centerZ
-            }));
-            
-            // Create non-rectangular face mesh with high transparency and single color
-            const ghostMaterial = new THREE.MeshLambertMaterial({ 
-              color: 0xcccccc, // Light gray for all non-rectangular faces
-              side: THREE.DoubleSide,
-              transparent: true,
-              opacity: 0.15, // Very transparent
-              depthWrite: false // Allow seeing through overlapping faces
-            });
-            
-            // Create geometry using BufferGeometry for arbitrary 3D face
-            const geometry = new THREE.BufferGeometry();
-            
-            // Create vertices
-            const vertices = [];
-            for (const point of centeredPoints) {
-              vertices.push(point.x, point.y, point.z);
-            }
-            
-            // Create triangulation (simple fan triangulation)
-            const indices = [];
-            for (let i = 1; i < centeredPoints.length - 1; i++) {
-              indices.push(0, i, i + 1);
-            }
-            
-            // Set attributes
-            geometry.setIndex(indices);
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-            
-            // Compute normals
-            geometry.computeVertexNormals();
-            
-            // Create mesh
-            const ghostMesh = new THREE.Mesh(geometry, ghostMaterial);
-            ghostMesh.userData.isStairModelPart = true;
-            
-            // Add to model group
-            modelGroup.add(ghostMesh);
-          }
-        } else if (renderingMode === RenderingMode.CLOSED_RECTANGLES) {
+          // Only collect closed horizontal rectangles
           if (isRectangle && isHorizontalRectangle) {
-            closedRectangleCount++;
-            
-            // Choose color for rectangular face
+            const points = getPointsFromLoop(loop);
+            const center = calculateRectangleCenter(points);
             const color = colors[colorIndex % colors.length];
             colorIndex++;
             
-            // Get z-coordinate from the first point
-            const z = points[0].z;
-            
-            // Convert to 2D points for ShapeGeometry, centered on model center
-            const points2D = points.map(p => ({ 
-              x: p.x - centerX, 
-              y: p.y - centerY 
-            }));
-            
-            // Create rectangle mesh
-            const rectangleMesh = createRectangle(points2D, z - centerZ, color);
-            
-            // Add to model group
-            modelGroup.add(rectangleMesh);
-          } else {
-            // For non-rectangular or non-horizontal faces, create with high transparency
-            const centeredPoints = points.map(p => ({
-              x: p.x - centerX,
-              y: p.y - centerY,
-              z: p.z - centerZ
-            }));
-            
-            // Create non-rectangular face mesh with high transparency and single color
-            const ghostMaterial = new THREE.MeshLambertMaterial({ 
-              color: 0xcccccc, // Light gray for all non-matching faces
-              side: THREE.DoubleSide,
-              transparent: true,
-              opacity: 0.15, // Very transparent
-              depthWrite: false // Allow seeing through overlapping faces
+            allRectangles.push({
+              index: rectangleIndex++,
+              loopIndex,
+              solidIndex,
+              faceIndex,
+              center,
+              points,
+              color
             });
-            
-            // Create geometry using BufferGeometry for arbitrary 3D face
-            const geometry = new THREE.BufferGeometry();
-            
-            // Create vertices
-            const vertices = [];
-            for (const point of centeredPoints) {
-              vertices.push(point.x, point.y, point.z);
-            }
-            
-            // Create triangulation (simple fan triangulation)
-            const indices = [];
-            for (let i = 1; i < centeredPoints.length - 1; i++) {
-              indices.push(0, i, i + 1);
-            }
-            
-            // Set attributes
-            geometry.setIndex(indices);
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-            
-            // Compute normals
-            geometry.computeVertexNormals();
-            
-            // Create mesh
-            const ghostMesh = new THREE.Mesh(geometry, ghostMaterial);
-            ghostMesh.userData.isStairModelPart = true;
-            
-            // Add to model group
-            modelGroup.add(ghostMesh);
           }
-        }
+        });
       });
     });
-  });
+    
+    console.log(`Found ${allRectangles.length} closed horizontal rectangles`);
+    
+    // Filter to keep only uppermost rectangles
+    const indicesToKeep = filterUppermostRectangles(allRectangles);
+    
+    console.log(`After filtering, keeping ${indicesToKeep.length} uppermost rectangles`);
+    uppermostRectanglesCount = indicesToKeep.length;
+    
+    // Render the filtered rectangles
+    indicesToKeep.forEach(rectIndex => {
+      const rectangle = allRectangles[rectIndex];
+      
+      // Convert to 2D points for ShapeGeometry, centered on model center
+      const points2D = rectangle.points.map(p => ({ 
+        x: p.x - centerX, 
+        y: p.y - centerY 
+      }));
+      
+      // Get z-coordinate from the center
+      const z = rectangle.points[0].z;
+      
+      // Create rectangle mesh
+      const rectangleMesh = createRectangle(points2D, z - centerZ, rectangle.color);
+      
+      // Add to model group
+      modelGroup.add(rectangleMesh);
+    });
+    
+    // Create ghost meshes for all non-selected faces
+    stairModel.solids.forEach((solid, solidIndex) => {
+      solid.faces.forEach((face, faceIndex) => {
+        face.loops.forEach((loop, loopIndex) => {
+          // Skip the rectangles we've already rendered
+          const isRectangle = isClosedRectangle(loop);
+          const isHorizontalRectangle = isHorizontalLoop(loop);
+          
+          if (isRectangle && isHorizontalRectangle) {
+            // Find if this is one of our rendered rectangles
+            const matchIndex = allRectangles.findIndex(rect => 
+              rect.solidIndex === solidIndex && 
+              rect.faceIndex === faceIndex && 
+              rect.loopIndex === loopIndex
+            );
+            
+            // If this rectangle is rendered, skip creating a ghost mesh
+            if (matchIndex >= 0 && indicesToKeep.includes(matchIndex)) {
+              return;
+            }
+          }
+          
+          // Create ghost mesh for all other faces
+          const points = getPointsFromLoop(loop);
+          const centeredPoints = points.map(p => ({
+            x: p.x - centerX,
+            y: p.y - centerY,
+            z: p.z - centerZ
+          }));
+          
+          // Create non-rectangular face mesh with high transparency and single color
+          const ghostMaterial = new THREE.MeshLambertMaterial({ 
+            color: 0xcccccc, // Light gray for all non-selected faces
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.15, // Very transparent
+            depthWrite: false // Allow seeing through overlapping faces
+          });
+          
+          // Create geometry using BufferGeometry for arbitrary 3D face
+          const geometry = new THREE.BufferGeometry();
+          
+          // Create vertices
+          const vertices = [];
+          for (const point of centeredPoints) {
+            vertices.push(point.x, point.y, point.z);
+          }
+          
+          // Create triangulation (simple fan triangulation)
+          const indices = [];
+          for (let i = 1; i < centeredPoints.length - 1; i++) {
+            indices.push(0, i, i + 1);
+          }
+          
+          // Set attributes
+          geometry.setIndex(indices);
+          geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+          
+          // Compute normals
+          geometry.computeVertexNormals();
+          
+          // Create mesh
+          const ghostMesh = new THREE.Mesh(geometry, ghostMaterial);
+          ghostMesh.userData.isStairModelPart = true;
+          
+          // Add to model group
+          modelGroup.add(ghostMesh);
+        });
+      });
+    });
+  } else {
+    // Standard processing for other modes
+    // Process solids
+    console.log(`Processing ${stairModel.solids.length} solids...`);
+    stairModel.solids.forEach((solid, solidIndex) => {
+      console.log(`Solid ${solidIndex}: ${solid.faces.length} faces`);
+      
+      // Process faces in the solid
+      solid.faces.forEach(face => {
+        // Process loops in the face
+        face.loops.forEach(loop => {
+          const isHorizontalRectangle = isHorizontalLoop(loop);
+          const isRectangle = isClosedRectangle(loop);
+          totalFaceCount++;
+          
+          // Get points from the loop
+          const points = getPointsFromLoop(loop);
+          
+          if (renderingMode === RenderingMode.ALL_FACES) {
+            // Choose color
+            const color = colors[colorIndex % colors.length];
+            colorIndex++;
+            
+            if (isHorizontalRectangle) {
+              // Get z-coordinate from the first point
+              const z = points[0].z;
+              
+              // Convert to 2D points for ShapeGeometry, centered on model center
+              const points2D = points.map(p => ({ 
+                x: p.x - centerX, 
+                y: p.y - centerY 
+              }));
+              
+              // Create rectangle mesh
+              const rectangleMesh = createRectangle(points2D, z - centerZ, color);
+              
+              // Add to model group
+              modelGroup.add(rectangleMesh);
+            } else {
+              // For non-rectangular faces
+              // Adjust points to be relative to model center
+              const centeredPoints = points.map(p => ({
+                x: p.x - centerX,
+                y: p.y - centerY,
+                z: p.z - centerZ
+              }));
+              
+              // Create non-rectangular face mesh
+              const faceMesh = createFace(centeredPoints, color);
+              
+              // Add to model group
+              modelGroup.add(faceMesh);
+            }
+          } else if (renderingMode === RenderingMode.FLAT_RECTANGLES) {
+            if (isHorizontalRectangle) {
+              horizontalRectangleCount++;
+              
+              // Choose color for rectangular face
+              const color = colors[colorIndex % colors.length];
+              colorIndex++;
+              
+              // Get z-coordinate from the first point
+              const z = points[0].z;
+              
+              // Convert to 2D points for ShapeGeometry, centered on model center
+              const points2D = points.map(p => ({ 
+                x: p.x - centerX, 
+                y: p.y - centerY 
+              }));
+              
+              // Create rectangle mesh
+              const rectangleMesh = createRectangle(points2D, z - centerZ, color);
+              
+              // Add to model group
+              modelGroup.add(rectangleMesh);
+            } else {
+              // For non-rectangular faces in FLAT_RECTANGLES mode, create with high transparency
+              // Adjust points to be relative to model center
+              const centeredPoints = points.map(p => ({
+                x: p.x - centerX,
+                y: p.y - centerY,
+                z: p.z - centerZ
+              }));
+              
+              // Create non-rectangular face mesh with high transparency and single color
+              const ghostMaterial = new THREE.MeshLambertMaterial({ 
+                color: 0xcccccc, // Light gray for all non-matching faces
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.15, // Very transparent
+                depthWrite: false // Allow seeing through overlapping faces
+              });
+              
+              // Create geometry using BufferGeometry for arbitrary 3D face
+              const geometry = new THREE.BufferGeometry();
+              
+              // Create vertices
+              const vertices = [];
+              for (const point of centeredPoints) {
+                vertices.push(point.x, point.y, point.z);
+              }
+              
+              // Create triangulation (simple fan triangulation)
+              const indices = [];
+              for (let i = 1; i < centeredPoints.length - 1; i++) {
+                indices.push(0, i, i + 1);
+              }
+              
+              // Set attributes
+              geometry.setIndex(indices);
+              geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+              
+              // Compute normals
+              geometry.computeVertexNormals();
+              
+              // Create mesh
+              const ghostMesh = new THREE.Mesh(geometry, ghostMaterial);
+              ghostMesh.userData.isStairModelPart = true;
+              
+              // Add to model group
+              modelGroup.add(ghostMesh);
+            }
+          } else if (renderingMode === RenderingMode.CLOSED_RECTANGLES) {
+            // Only show faces that are both closed rectangles AND horizontal
+            if (isRectangle && isHorizontalRectangle) {
+              closedRectangleCount++;
+              
+              // Choose color for rectangular face
+              const color = colors[colorIndex % colors.length];
+              colorIndex++;
+              
+              // Get z-coordinate from the first point
+              const z = points[0].z;
+              
+              // Convert to 2D points for ShapeGeometry, centered on model center
+              const points2D = points.map(p => ({ 
+                x: p.x - centerX, 
+                y: p.y - centerY 
+              }));
+              
+              // Create rectangle mesh
+              const rectangleMesh = createRectangle(points2D, z - centerZ, color);
+              
+              // Add to model group
+              modelGroup.add(rectangleMesh);
+            } else {
+              // For non-rectangular or non-horizontal faces, create with high transparency
+              const centeredPoints = points.map(p => ({
+                x: p.x - centerX,
+                y: p.y - centerY,
+                z: p.z - centerZ
+              }));
+              
+              // Create non-rectangular face mesh with high transparency and single color
+              const ghostMaterial = new THREE.MeshLambertMaterial({ 
+                color: 0xcccccc, // Light gray for all non-matching faces
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.15, // Very transparent
+                depthWrite: false // Allow seeing through overlapping faces
+              });
+              
+              // Create geometry using BufferGeometry for arbitrary 3D face
+              const geometry = new THREE.BufferGeometry();
+              
+              // Create vertices
+              const vertices = [];
+              for (const point of centeredPoints) {
+                vertices.push(point.x, point.y, point.z);
+              }
+              
+              // Create triangulation (simple fan triangulation)
+              const indices = [];
+              for (let i = 1; i < centeredPoints.length - 1; i++) {
+                indices.push(0, i, i + 1);
+              }
+              
+              // Set attributes
+              geometry.setIndex(indices);
+              geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+              
+              // Compute normals
+              geometry.computeVertexNormals();
+              
+              // Create mesh
+              const ghostMesh = new THREE.Mesh(geometry, ghostMaterial);
+              ghostMesh.userData.isStairModelPart = true;
+              
+              // Add to model group
+              modelGroup.add(ghostMesh);
+            }
+          } else if (renderingMode === RenderingMode.RECTANGLES_WITH_CENTERS) {
+            // Draw closed horizontal rectangles with center markers
+            if (isRectangle && isHorizontalRectangle) {
+              closedRectangleCount++;
+              centerMarkersCount++;
+              
+              // Choose color for rectangular face
+              const color = colors[colorIndex % colors.length];
+              colorIndex++;
+              
+              // Get z-coordinate from the first point
+              const z = points[0].z;
+              
+              // Convert to 2D points for ShapeGeometry, centered on model center
+              const points2D = points.map(p => ({ 
+                x: p.x - centerX, 
+                y: p.y - centerY 
+              }));
+              
+              // Create rectangle mesh
+              const rectangleMesh = createRectangle(points2D, z - centerZ, color);
+              
+              // Add to model group
+              modelGroup.add(rectangleMesh);
+              
+              // Calculate center point of the rectangle
+              const originalPoints = points.map(p => ({
+                x: p.x,
+                y: p.y,
+                z: p.z
+              }));
+              
+              // Calculate face area to determine marker size
+              const faceArea = calculateFaceArea(originalPoints);
+              
+              const centerPoint = calculateRectangleCenter(originalPoints);
+              
+              // Create center marker with bright red color
+              // Position it slightly above the face to avoid z-fighting
+              const centeredMarker = createCenterMarker(
+                {
+                  x: centerPoint.x - centerX,
+                  y: centerPoint.y - centerY,
+                  z: centerPoint.z - centerZ + 0.05
+                },
+                0.15, // Base size
+                0xff0000, // Bright red
+                faceArea // Pass face area for scaling
+              );
+              
+              // Add center marker to model group
+              modelGroup.add(centeredMarker);
+              
+              // Log debug info for face sizes
+              console.log(`Added center marker for face with area: ${faceArea.toFixed(2)}`);
+            } else {
+              // For non-rectangular or non-horizontal faces, create with high transparency
+              const centeredPoints = points.map(p => ({
+                x: p.x - centerX,
+                y: p.y - centerY,
+                z: p.z - centerZ
+              }));
+              
+              // Create non-rectangular face mesh with high transparency and single color
+              const ghostMaterial = new THREE.MeshLambertMaterial({ 
+                color: 0xcccccc, // Light gray for all non-matching faces
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.15, // Very transparent
+                depthWrite: false // Allow seeing through overlapping faces
+              });
+              
+              // Create geometry using BufferGeometry for arbitrary 3D face
+              const geometry = new THREE.BufferGeometry();
+              
+              // Create vertices
+              const vertices = [];
+              for (const point of centeredPoints) {
+                vertices.push(point.x, point.y, point.z);
+              }
+              
+              // Create triangulation (simple fan triangulation)
+              const indices = [];
+              for (let i = 1; i < centeredPoints.length - 1; i++) {
+                indices.push(0, i, i + 1);
+              }
+              
+              // Set attributes
+              geometry.setIndex(indices);
+              geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+              
+              // Compute normals
+              geometry.computeVertexNormals();
+              
+              // Create mesh
+              const ghostMesh = new THREE.Mesh(geometry, ghostMaterial);
+              ghostMesh.userData.isStairModelPart = true;
+              
+              // Add to model group
+              modelGroup.add(ghostMesh);
+            }
+          }
+        });
+      });
+    });
+  }
   
   // Compute bounding box of the model group to properly position camera
   const bbox = new THREE.Box3().setFromObject(modelGroup);
@@ -439,14 +874,21 @@ export function visualizeStairModel(
     infoContent += `Highlighting ${horizontalRectangleCount} flat rectangles of ${totalFaceCount} total faces`;
   } else if (renderingMode === RenderingMode.CLOSED_RECTANGLES) {
     infoContent += `Highlighting ${closedRectangleCount} closed horizontal rectangles of ${totalFaceCount} total faces`;
+  } else if (renderingMode === RenderingMode.RECTANGLES_WITH_CENTERS) {
+    infoContent += `Showing ${centerMarkersCount} closed horizontal rectangles with center markers`;
+  } else if (renderingMode === RenderingMode.UPPERMOST_RECTANGLES) {
+    infoContent += `Showing ${uppermostRectanglesCount} uppermost closed horizontal rectangles`;
   }
   updateInfoText(infoContent);
   
   // Return the count of rendered faces based on mode
   if (renderingMode === RenderingMode.FLAT_RECTANGLES) {
     return horizontalRectangleCount;
-  } else if (renderingMode === RenderingMode.CLOSED_RECTANGLES) {
+  } else if (renderingMode === RenderingMode.CLOSED_RECTANGLES ||
+             renderingMode === RenderingMode.RECTANGLES_WITH_CENTERS) {
     return closedRectangleCount;
+  } else if (renderingMode === RenderingMode.UPPERMOST_RECTANGLES) {
+    return uppermostRectanglesCount;
   }
   return totalFaceCount;
 }
