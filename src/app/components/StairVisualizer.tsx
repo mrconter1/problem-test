@@ -203,10 +203,6 @@ export default function StairVisualizer() {
     
     document.addEventListener('pointerlockchange', () => {
       const isLocked = document.pointerLockElement === renderer.domElement;
-      const cameraInfoElement = document.getElementById('cameraInfo');
-      if (cameraInfoElement) {
-        cameraInfoElement.style.display = isLocked ? 'none' : 'block';
-      }
       
       // Add a visual indicator when controls are active
       if (isLocked) {
@@ -620,30 +616,24 @@ export default function StairVisualizer() {
             left: '16px',
             color: 'white',
             fontFamily: 'monospace',
-            backgroundColor: 'rgba(0,0,0,0.8)',
-            padding: '16px',
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            padding: '12px',
             zIndex: 10000,
-            borderRadius: '8px',
-            border: '1px solid #666',
-            boxShadow: '0 4px 8px rgba(0,0,0,0.5)'
+            borderRadius: '4px',
+            border: '1px solid rgba(255,255,255,0.2)',
+            fontSize: '14px'
           }}
         >
-          <strong style={{ display: 'block', marginBottom: '8px', fontSize: '18px' }}>Controls:</strong>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-            <span>Mouse:</span><span style={{ color: '#ffdd00' }}>Look around</span>
-            <span>W/A/S/D:</span><span style={{ color: '#ffdd00' }}>Move</span>
-            <span>Space:</span><span style={{ color: '#ffdd00' }}>Move up</span>
-            <span>Left Ctrl:</span><span style={{ color: '#ffdd00' }}>Move down</span>
-            <span>Click/Esc:</span><span style={{ color: '#ffdd00' }}>Toggle controls</span>
+          <div style={{ marginBottom: '8px' }}>
+            <strong>Click</strong> to toggle camera controls
           </div>
-          <div style={{ 
-            marginTop: '8px', 
-            textAlign: 'center', 
-            backgroundColor: '#885500', 
-            padding: '8px', 
-            borderRadius: '4px' 
-          }}>
-            Click to toggle mouse control
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+            <span>Mouse:</span><span>Look around</span>
+            <span>W/A/S/D:</span><span>Move</span>
+            <span>Space:</span><span>Up</span>
+            <span>Ctrl:</span><span>Down</span>
+            <span>Esc:</span><span>Exit</span>
           </div>
         </div>
       </div>
