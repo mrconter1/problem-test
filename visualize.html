@@ -70,8 +70,12 @@
         directionalLight.position.set(1, 1, 1);
         scene.add(directionalLight);
         
-        // Add a grid helper
-        const gridHelper = new THREE.GridHelper(100, 100);
+        // Add a grid helper aligned with XY plane (where Z is up)
+        const gridSize = 100;
+        const gridDivisions = 100;
+        const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x888888, 0x444444);
+        // Rotate the grid to align with XY plane (where Z is up)
+        gridHelper.rotation.x = Math.PI / 2;
         scene.add(gridHelper);
         
         // Add axes helper
