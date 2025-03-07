@@ -53,7 +53,8 @@ export default function StairVisualizer() {
     scene.background = new THREE.Color(0x333333);
     
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, -20, 20);
+    // Set initial camera position to a reasonable viewing angle
+    camera.position.set(20, -20, 15);
     camera.up.set(0, 0, 1); // Set Z as up direction
     camera.lookAt(0, 0, 0);
     
@@ -448,14 +449,35 @@ export default function StairVisualizer() {
           const size = bbox.getSize(new THREE.Vector3());
           console.log('Bounding box:', { center, size });
           
-          // Position camera at a good starting point
-          camera.position.set(center.x, center.y - size.y, center.z + size.z / 2);
+          // Calculate a better camera position that looks at the model
+          // Position the camera at a distance that ensures the entire model is visible
+          const maxDimension = Math.max(size.x, size.y, size.z);
+          const distance = maxDimension * 1.5; // Adjust this multiplier as needed
+          
+          // Position camera at a good viewing angle (front-ish view)
+          camera.position.set(
+            center.x + distance * 0.7, // Slightly to the right
+            center.y - distance * 0.7, // Slightly in front
+            center.z + distance * 0.5  // Above the model
+          );
           console.log('Camera position:', camera.position);
           
-          // Reset camera rotation
-          cameraState.yaw = Math.PI / 2; // Look toward +Y initially
-          cameraState.pitch = 0;
-          updateCameraDirection();
+          // Look directly at the center of the model
+          camera.lookAt(center);
+          
+          // Calculate the yaw and pitch based on the camera's direction
+          const direction = new THREE.Vector3();
+          direction.subVectors(center, camera.position).normalize();
+          
+          // Calculate yaw (rotation around Z axis)
+          cameraState.yaw = Math.atan2(direction.x, direction.y);
+          
+          // Calculate pitch (rotation up/down)
+          const horizontalDistance = Math.sqrt(direction.x * direction.x + direction.y * direction.y);
+          cameraState.pitch = Math.atan2(direction.z, horizontalDistance);
+          
+          // Ensure Z stays as up direction
+          camera.up.set(0, 0, 1);
         }
         
         // Visualize the first model initially
