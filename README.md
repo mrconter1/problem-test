@@ -1,14 +1,30 @@
 # Stair Model Visualization
 
-This project provides an interactive 3D visualization of stair models, allowing users to analyze stair steps in architectural designs.
+This project provides an interactive 3D visualization tool for analyzing stair models in architectural designs, with a specific focus on validating stair step depth for safety compliance.
+
+## Purpose
+
+The primary goal of this tool is to detect and measure stair step depths to validate if they meet the standard safety requirement of at least 25cm depth per step. The visualization provides intuitive interfaces for:
+
+- Loading and visualizing 3D stair models
+- Precise measurement of stair step dimensions
+- Visual indicators for step depths
+- Multiple rendering modes for different analysis approaches
 
 ## Features
 
-- Interactive 3D visualization of stair models
-- FPS-style camera controls for intuitive navigation
+- Interactive 3D visualization with FPS-style camera controls
+- Multiple specialized rendering modes:
+  - ALL_FACES: Complete model rendering
+  - FLAT_RECTANGLES: Horizontal rectangles only
+  - CLOSED_RECTANGLES: Complete closed shapes only
+  - UPPERMOST_RECTANGLES: Only topmost horizontal rectangles
+  - ASPECT_RATIO_RECTANGLES: Rectangles filtered by aspect ratio
+  - LONG_SIDE_LINES: Highlights and measures stair step depths
+- High-precision measurement display with outlined text for clarity
+- Intuitive camera movement and rotation controls
 - Ability to switch between different stair models
-- Identification of horizontal stair steps with color coding
-- Coordinate system with labeled axes
+- Comprehensive UI with controls and information panels
 
 ## Getting Started
 
@@ -28,11 +44,13 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Controls
 
-- **Mouse**: Look around
-- **W/A/S/D**: Move horizontally
-- **Space**: Move up
-- **Left Ctrl**: Move down
-- **Click**: Lock pointer for camera control (ESC to exit)
+- **Mouse**: Look around the 3D environment
+- **W/A/S/D**: Move horizontally through the scene
+- **Space**: Move upward
+- **Shift**: Move downward
+- **Left-click**: Toggle mouse control (locks pointer for camera rotation)
+- **Right-click**: Hold for slow, precise movement
+- **ESC**: Exit pointer lock mode
 
 ## Technical Details
 
@@ -40,13 +58,29 @@ This project is built with:
 
 - [Next.js](https://nextjs.org) - React framework
 - [Three.js](https://threejs.org) - 3D visualization library
-- [TypeScript](https://www.typescriptlang.org) - Type-safe JavaScript
+- [TypeScript](https://www.typescriptlang.org) - For type-safe development
 
-The visualization identifies horizontal surfaces in 3D stair models by analyzing the z-coordinates of points in each face loop.
+### Technical Approach
+
+The visualization works by:
+
+1. Parsing and loading 3D stair models
+2. Analyzing geometry to identify horizontal surfaces and rectangular shapes
+3. Filtering rectangles based on orientation, position, and aspect ratio
+4. Measuring distances between parallel long sides to determine step depths
+5. Visualizing measurements with dimension lines and clear text labels
+6. Providing an interactive 3D environment for comprehensive analysis
+
+The LONG_SIDE_LINES rendering mode (filter #6) is specialized for identifying and measuring correctly designed stair steps, displaying precise depth measurements for each step.
 
 ## Deployment
 
-The easiest way to deploy this app is to use the [Vercel Platform](https://vercel.com/new) from the creators of Next.js.
+The application can be deployed using [Vercel](https://vercel.com/new) for a seamless experience.
+
+## Additional Resources
+
+- [Three.js Documentation](https://threejs.org/docs/)
+- [Next.js Documentation](https://nextjs.org/docs)
 
 ## Learn More
 
