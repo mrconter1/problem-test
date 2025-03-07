@@ -15,10 +15,33 @@
             font-family: monospace;
             pointer-events: none;
         }
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            border-radius: 5px;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        #modelSelect {
+            margin-top: 5px;
+            padding: 5px;
+            background: #444;
+            color: white;
+            border: 1px solid #666;
+            border-radius: 3px;
+            width: 100%;
+        }
     </style>
 </head>
 <body>
     <div id="info">Loading stair model...</div>
+    <div id="controls">
+        <label for="modelSelect">Select Stair Model:</label>
+        <select id="modelSelect"></select>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
     <script>
@@ -114,98 +137,125 @@
             return mesh;
         }
         
-        // Load the stair model
+        // Store all stair models
+        let allStairModels = [];
+        // Group to hold the current model's objects
+        const modelGroup = new THREE.Group();
+        scene.add(modelGroup);
+        
+        // Function to visualize a stair model
+        function visualizeStairModel(stairModel) {
+            // Clear previous model
+            while(modelGroup.children.length > 0) { 
+                modelGroup.remove(modelGroup.children[0]); 
+            }
+            
+            const infoElement = document.getElementById('info');
+            infoElement.textContent = `Stair Model: ${stairModel.name} (ID: ${stairModel.id})`;
+            
+            // Center the model
+            const boundingBox = stairModel.boundingBox;
+            const centerX = (boundingBox.min.x + boundingBox.max.x) / 2;
+            const centerY = (boundingBox.min.y + boundingBox.max.y) / 2;
+            
+            // Find horizontal 4-line loops
+            let horizontalRectangles = [];
+            let colorIndex = 0;
+            const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff];
+            
+            stairModel.solids.forEach(solid => {
+                solid.faces.forEach(face => {
+                    face.loops.forEach(loop => {
+                        // Check if it's a 4-line loop
+                        if (loop.length === 4) {
+                            // Check if all points have the same z-value
+                            const referenceZ = loop[0].start.z;
+                            let isHorizontal = true;
+                            
+                            for (const line of loop) {
+                                if (line.start.z !== referenceZ || line.end.z !== referenceZ) {
+                                    isHorizontal = false;
+                                    break;
+                                }
+                            }
+                            
+                            if (isHorizontal) {
+                                // Extract the points
+                                const points = [
+                                    { x: loop[0].start.x - centerX, y: loop[0].start.y - centerY },
+                                    { x: loop[1].start.x - centerX, y: loop[1].start.y - centerY },
+                                    { x: loop[2].start.x - centerX, y: loop[2].start.y - centerY },
+                                    { x: loop[3].start.x - centerX, y: loop[3].start.y - centerY }
+                                ];
+                                
+                                // Create a rectangle and add it to the scene
+                                const color = colors[colorIndex % colors.length];
+                                const rectangle = createRectangle(points, referenceZ, color);
+                                modelGroup.add(rectangle);
+                                
+                                horizontalRectangles.push({
+                                    z: referenceZ,
+                                    mesh: rectangle
+                                });
+                                
+                                colorIndex++;
+                            }
+                        }
+                    });
+                });
+            });
+            
+            // Update info
+            infoElement.textContent += `\nFound ${horizontalRectangles.length} horizontal rectangles`;
+            
+            // Add a legend explaining the coordinate system
+            infoElement.textContent += `\n\nCoordinate System:`;
+            infoElement.textContent += `\nX-axis (Red): Width`;
+            infoElement.textContent += `\nY-axis (Green): Depth`;
+            infoElement.textContent += `\nZ-axis (Blue): Height`;
+            
+            // Adjust camera to see the model
+            const bbox = new THREE.Box3().setFromObject(modelGroup);
+            const center = bbox.getCenter(new THREE.Vector3());
+            const size = bbox.getSize(new THREE.Vector3());
+            
+            // Position camera to see the entire model
+            const maxDim = Math.max(size.x, size.y, size.z);
+            const fov = camera.fov * (Math.PI / 180);
+            let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+            cameraZ *= 1.5; // Add some margin
+            
+            camera.position.set(center.x, center.y - cameraZ, center.z + cameraZ);
+            camera.lookAt(center);
+            controls.target.copy(center);
+        }
+        
+        // Load the stair models
         fetch('stair.json')
             .then(response => response.json())
             .then(data => {
                 // Handle both single object and array
-                const stairModels = Array.isArray(data) ? data : [data];
-                const stairModel = stairModels[0]; // Just visualize the first model
+                allStairModels = Array.isArray(data) ? data : [data];
                 
-                const infoElement = document.getElementById('info');
-                infoElement.textContent = `Stair Model: ${stairModel.name} (ID: ${stairModel.id})`;
-                
-                // Center the model
-                const boundingBox = stairModel.boundingBox;
-                const centerX = (boundingBox.min.x + boundingBox.max.x) / 2;
-                const centerY = (boundingBox.min.y + boundingBox.max.y) / 2;
-                
-                // Find horizontal 4-line loops
-                let horizontalRectangles = [];
-                let colorIndex = 0;
-                const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff];
-                
-                stairModel.solids.forEach(solid => {
-                    solid.faces.forEach(face => {
-                        face.loops.forEach(loop => {
-                            // Check if it's a 4-line loop
-                            if (loop.length === 4) {
-                                // Check if all points have the same z-value
-                                const referenceZ = loop[0].start.z;
-                                let isHorizontal = true;
-                                
-                                for (const line of loop) {
-                                    if (line.start.z !== referenceZ || line.end.z !== referenceZ) {
-                                        isHorizontal = false;
-                                        break;
-                                    }
-                                }
-                                
-                                if (isHorizontal) {
-                                    // Extract the points
-                                    const points = [
-                                        { x: loop[0].start.x - centerX, y: loop[0].start.y - centerY },
-                                        { x: loop[1].start.x - centerX, y: loop[1].start.y - centerY },
-                                        { x: loop[2].start.x - centerX, y: loop[2].start.y - centerY },
-                                        { x: loop[3].start.x - centerX, y: loop[3].start.y - centerY }
-                                    ];
-                                    
-                                    // Create a rectangle and add it to the scene
-                                    const color = colors[colorIndex % colors.length];
-                                    const rectangle = createRectangle(points, referenceZ, color);
-                                    scene.add(rectangle);
-                                    
-                                    horizontalRectangles.push({
-                                        z: referenceZ,
-                                        mesh: rectangle
-                                    });
-                                    
-                                    colorIndex++;
-                                }
-                            }
-                        });
-                    });
+                // Populate the dropdown
+                const modelSelect = document.getElementById('modelSelect');
+                allStairModels.forEach((model, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `${model.name} (ID: ${model.id})`;
+                    modelSelect.appendChild(option);
                 });
                 
-                // Update info
-                infoElement.textContent += `\nFound ${horizontalRectangles.length} horizontal rectangles`;
-                
-                // Add a legend explaining the coordinate system
-                infoElement.textContent += `\n\nCoordinate System:`;
-                infoElement.textContent += `\nX-axis (Red): Width`;
-                infoElement.textContent += `\nY-axis (Green): Depth`;
-                infoElement.textContent += `\nZ-axis (Blue): Height`;
-                
-                // Adjust camera to see the model
-                const bbox = new THREE.Box3();
-                scene.traverse(object => {
-                    if (object.isMesh) {
-                        bbox.expandByObject(object);
-                    }
+                // Add event listener for dropdown changes
+                modelSelect.addEventListener('change', function() {
+                    const selectedIndex = parseInt(this.value);
+                    visualizeStairModel(allStairModels[selectedIndex]);
                 });
                 
-                const center = bbox.getCenter(new THREE.Vector3());
-                const size = bbox.getSize(new THREE.Vector3());
-                
-                // Position camera to see the entire model
-                const maxDim = Math.max(size.x, size.y, size.z);
-                const fov = camera.fov * (Math.PI / 180);
-                let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
-                cameraZ *= 1.5; // Add some margin
-                
-                camera.position.set(center.x, center.y - cameraZ, center.z + cameraZ);
-                camera.lookAt(center);
-                controls.target.copy(center);
+                // Visualize the first model initially
+                if (allStairModels.length > 0) {
+                    visualizeStairModel(allStairModels[0]);
+                }
                 
                 // Animation loop
                 function animate() {
