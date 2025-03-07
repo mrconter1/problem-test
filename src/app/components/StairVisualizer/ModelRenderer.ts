@@ -479,6 +479,332 @@ function extractLongSides(
 }
 
 /**
+ * Calculate the perpendicular distance between two parallel lines
+ * @param line1 First line
+ * @param line2 Second line
+ * @returns The perpendicular distance between the lines
+ */
+function calculateLineDistance(
+  line1: { start: Point; end: Point }, 
+  line2: { start: Point; end: Point }
+): number {
+  // Calculate direction vector of the first line
+  const dirVector = {
+    x: line1.end.x - line1.start.x,
+    y: line1.end.y - line1.start.y,
+    z: line1.end.z - line1.start.z
+  };
+  
+  // Normalize the direction vector
+  const length = Math.sqrt(dirVector.x * dirVector.x + dirVector.y * dirVector.y + dirVector.z * dirVector.z);
+  const unitDir = {
+    x: dirVector.x / length,
+    y: dirVector.y / length,
+    z: dirVector.z / length
+  };
+  
+  // Calculate a vector from a point on line1 to a point on line2
+  const connectingVector = {
+    x: line2.start.x - line1.start.x,
+    y: line2.start.y - line1.start.y,
+    z: line2.start.z - line1.start.z
+  };
+  
+  // Calculate the dot product of connecting vector and unit direction
+  const dot = connectingVector.x * unitDir.x + 
+              connectingVector.y * unitDir.y + 
+              connectingVector.z * unitDir.z;
+  
+  // Project the connecting vector onto the direction
+  const projection = {
+    x: dot * unitDir.x,
+    y: dot * unitDir.y,
+    z: dot * unitDir.z
+  };
+  
+  // Calculate the perpendicular component
+  const perpendicular = {
+    x: connectingVector.x - projection.x,
+    y: connectingVector.y - projection.y,
+    z: connectingVector.z - projection.z
+  };
+  
+  // The magnitude of this perpendicular component is the distance
+  const distance = Math.sqrt(
+    perpendicular.x * perpendicular.x + 
+    perpendicular.y * perpendicular.y + 
+    perpendicular.z * perpendicular.z
+  );
+  
+  return distance;
+}
+
+/**
+ * Create a text sprite to display a measurement in 3D space
+ */
+function createMeasurementLabel(
+  position: Point,
+  text: string,
+  color: number = 0xffffff,
+  size: number = 0.5
+): THREE.Sprite {
+  // Create a canvas for the text
+  const canvas = document.createElement('canvas');
+  const context = canvas.getContext('2d');
+  if (!context) return new THREE.Sprite(); // Fallback if can't get context
+  
+  canvas.width = 256;
+  canvas.height = 128;
+  
+  // Set up text style
+  context.fillStyle = '#00000088'; // Semi-transparent background
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  context.strokeStyle = '#ffffff';
+  context.lineWidth = 2;
+  context.strokeRect(0, 0, canvas.width, canvas.height);
+  
+  context.font = 'Bold 24px Arial';
+  context.fillStyle = '#ffffff';
+  context.textAlign = 'center';
+  context.textBaseline = 'middle';
+  context.fillText(text, canvas.width / 2, canvas.height / 2);
+  
+  // Create sprite material with the canvas
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true
+  });
+  
+  // Create the sprite
+  const sprite = new THREE.Sprite(material);
+  sprite.position.set(position.x, position.y, position.z);
+  sprite.scale.set(size, size / 2, 1);
+  sprite.userData.isStairModelPart = true;
+  sprite.userData.isMeasurementLabel = true;
+  
+  return sprite;
+}
+
+/**
+ * Create a dimension line with arrows to indicate distance measurement
+ */
+function createDimensionLine(
+  line1: { start: Point; end: Point },
+  line2: { start: Point; end: Point },
+  adjustedCenter: Point, // Center point relative to model center
+  color: number = 0xffffff
+): THREE.Group {
+  // Create a group to hold all parts of the dimension line
+  const group = new THREE.Group();
+  group.userData.isStairModelPart = true;
+  
+  // Calculate perpendicular direction to find measurement points
+  // First, get the direction vector of line1
+  const dirVector = {
+    x: line1.end.x - line1.start.x,
+    y: line1.end.y - line1.start.y,
+    z: line1.end.z - line1.start.z
+  };
+  
+  // Normalize it
+  const length = Math.sqrt(dirVector.x * dirVector.x + dirVector.y * dirVector.y + dirVector.z * dirVector.z);
+  const unitDir = {
+    x: dirVector.x / length,
+    y: dirVector.y / length,
+    z: dirVector.z / length
+  };
+  
+  // Calculate a vector from a point on line1 to a point on line2
+  const connectingVector = {
+    x: line2.start.x - line1.start.x,
+    y: line2.start.y - line1.start.y,
+    z: line2.start.z - line1.start.z
+  };
+  
+  // Project connecting vector onto the unit direction to get the parallel component
+  const dot = connectingVector.x * unitDir.x + 
+              connectingVector.y * unitDir.y + 
+              connectingVector.z * unitDir.z;
+  
+  const projectionVector = {
+    x: dot * unitDir.x,
+    y: dot * unitDir.y,
+    z: dot * unitDir.z
+  };
+  
+  // Subtract to get the perpendicular component
+  const perpVector = {
+    x: connectingVector.x - projectionVector.x,
+    y: connectingVector.y - projectionVector.y,
+    z: connectingVector.z - projectionVector.z
+  };
+  
+  // Normalize the perpendicular vector
+  const perpLength = Math.sqrt(perpVector.x * perpVector.x + perpVector.y * perpVector.y + perpVector.z * perpVector.z);
+  if (perpLength === 0) return group; // If lines are coincident, can't create a dimension
+  
+  const unitPerp = {
+    x: perpVector.x / perpLength,
+    y: perpVector.y / perpLength,
+    z: perpVector.z / perpLength
+  };
+  
+  // Find midpoints of each line (or use any point on the line)
+  const midpoint1 = {
+    x: (line1.start.x + line1.end.x) / 2,
+    y: (line1.start.y + line1.end.y) / 2,
+    z: (line1.start.z + line1.end.z) / 2
+  };
+  
+  const midpoint2 = {
+    x: (line2.start.x + line2.end.x) / 2,
+    y: (line2.start.y + line2.end.y) / 2,
+    z: (line2.start.z + line2.end.z) / 2
+  };
+  
+  // Calculate the adjusted midpoints (center-relative)
+  const adjustedMidpoint1 = {
+    x: midpoint1.x - adjustedCenter.x,
+    y: midpoint1.y - adjustedCenter.y,
+    z: midpoint1.z - adjustedCenter.z
+  };
+  
+  const adjustedMidpoint2 = {
+    x: midpoint2.x - adjustedCenter.x,
+    y: midpoint2.y - adjustedCenter.y,
+    z: midpoint2.z - adjustedCenter.z
+  };
+  
+  // Create the main dimension line
+  const lineMaterial = new THREE.LineBasicMaterial({ 
+    color: color,
+    linewidth: 2
+  });
+  
+  // Create geometry for the main line
+  const lineGeometry = new THREE.BufferGeometry();
+  const linePositions = new Float32Array([
+    adjustedMidpoint1.x, adjustedMidpoint1.y, adjustedMidpoint1.z,
+    adjustedMidpoint2.x, adjustedMidpoint2.y, adjustedMidpoint2.z
+  ]);
+  lineGeometry.setAttribute('position', new THREE.BufferAttribute(linePositions, 3));
+  
+  const dimensionLine = new THREE.Line(lineGeometry, lineMaterial);
+  group.add(dimensionLine);
+  
+  // Create arrowheads at both ends
+  const arrowSize = perpLength * 0.1; // Size relative to dimension
+  
+  // Function to create an arrowhead
+  const createArrowhead = (start: Point, end: Point, reversed: boolean = false) => {
+    // Calculate direction
+    const dir = {
+      x: end.x - start.x,
+      y: end.y - start.y,
+      z: end.z - start.z
+    };
+    
+    // Normalize
+    const arrowLength = Math.sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+    const unitDir = {
+      x: dir.x / arrowLength,
+      y: dir.y / arrowLength,
+      z: dir.z / arrowLength
+    };
+    
+    // Calculate orthogonal vectors (any perpendicular vector would do)
+    // We'll use a cross product with a convenient vector to find a perpendicular
+    // First try with up vector
+    const up = { x: 0, y: 0, z: 1 };
+    
+    // Calculate cross product dir × up
+    let ortho1 = {
+      x: unitDir.y * up.z - unitDir.z * up.y,
+      y: unitDir.z * up.x - unitDir.x * up.z,
+      z: unitDir.x * up.y - unitDir.y * up.x
+    };
+    
+    // Check if ortho1 is zero (dir and up are parallel)
+    let ortho1Length = Math.sqrt(ortho1.x * ortho1.x + ortho1.y * ortho1.y + ortho1.z * ortho1.z);
+    if (ortho1Length < 0.001) {
+      // Use a different up vector
+      const altUp = { x: 0, y: 1, z: 0 };
+      ortho1 = {
+        x: unitDir.y * altUp.z - unitDir.z * altUp.y,
+        y: unitDir.z * altUp.x - unitDir.x * altUp.z,
+        z: unitDir.x * altUp.y - unitDir.y * altUp.x
+      };
+      ortho1Length = Math.sqrt(ortho1.x * ortho1.x + ortho1.y * ortho1.y + ortho1.z * ortho1.z);
+    }
+    
+    // Normalize ortho1
+    const unitOrtho1 = {
+      x: ortho1.x / ortho1Length,
+      y: ortho1.y / ortho1Length,
+      z: ortho1.z / ortho1Length
+    };
+    
+    // Calculate second orthogonal vector with another cross product
+    const ortho2 = {
+      x: unitDir.y * unitOrtho1.z - unitDir.z * unitOrtho1.y,
+      y: unitDir.z * unitOrtho1.x - unitDir.x * unitOrtho1.z,
+      z: unitDir.x * unitOrtho1.y - unitDir.y * unitOrtho1.x
+    };
+    
+    // Normalize ortho2
+    const ortho2Length = Math.sqrt(ortho2.x * ortho2.x + ortho2.y * ortho2.y + ortho2.z * ortho2.z);
+    const unitOrtho2 = {
+      x: ortho2.x / ortho2Length,
+      y: ortho2.y / ortho2Length,
+      z: ortho2.z / ortho2Length
+    };
+    
+    // Calculate arrowhead points
+    // If reversed, change direction of unitDir
+    const finalDir = reversed ? 
+      { x: -unitDir.x, y: -unitDir.y, z: -unitDir.z } : 
+      unitDir;
+    
+    const arrowTip = reversed ? start : end;
+    
+    const arrowEnd1 = {
+      x: arrowTip.x - arrowSize * finalDir.x + arrowSize * 0.5 * unitOrtho1.x,
+      y: arrowTip.y - arrowSize * finalDir.y + arrowSize * 0.5 * unitOrtho1.y,
+      z: arrowTip.z - arrowSize * finalDir.z + arrowSize * 0.5 * unitOrtho1.z
+    };
+    
+    const arrowEnd2 = {
+      x: arrowTip.x - arrowSize * finalDir.x - arrowSize * 0.5 * unitOrtho1.x,
+      y: arrowTip.y - arrowSize * finalDir.y - arrowSize * 0.5 * unitOrtho1.y,
+      z: arrowTip.z - arrowSize * finalDir.z - arrowSize * 0.5 * unitOrtho1.z
+    };
+    
+    // Create arrowhead geometry
+    const arrowGeometry = new THREE.BufferGeometry();
+    const arrowPositions = new Float32Array([
+      arrowTip.x, arrowTip.y, arrowTip.z,
+      arrowEnd1.x, arrowEnd1.y, arrowEnd1.z,
+      arrowTip.x, arrowTip.y, arrowTip.z,
+      arrowEnd2.x, arrowEnd2.y, arrowEnd2.z
+    ]);
+    
+    arrowGeometry.setAttribute('position', new THREE.BufferAttribute(arrowPositions, 3));
+    
+    return new THREE.LineSegments(arrowGeometry, lineMaterial);
+  };
+  
+  // Add arrowheads at both ends
+  const arrow1 = createArrowhead(adjustedMidpoint1, adjustedMidpoint2, true);
+  const arrow2 = createArrowhead(adjustedMidpoint1, adjustedMidpoint2, false);
+  
+  group.add(arrow1);
+  group.add(arrow2);
+  
+  return group;
+}
+
+/**
  * Visualize a stair model
  */
 export function visualizeStairModel(
@@ -649,8 +975,22 @@ export function visualizeStairModel(
       // Use the aspect ratio filtered rectangles for rendering lines
       let lineIndex = 0;
       
+      // Keep track of step measurements for the info panel
+      const stepDistances: number[] = [];
+      
       aspectRatioRects.forEach(rectangle => {
-        if (!rectangle.longSides || rectangle.longSides.length === 0) return;
+        if (!rectangle.longSides || rectangle.longSides.length < 2) return;
+        
+        // Calculate distance between the two long sides
+        const line1 = rectangle.longSides[0];
+        const line2 = rectangle.longSides[1];
+        const distance = calculateLineDistance(line1, line2);
+        
+        // Round to 2 decimal places
+        const distanceRounded = Math.round(distance * 100) / 100;
+        stepDistances.push(distanceRounded);
+        
+        console.log(`Step distance: ${distanceRounded} units`);
         
         // Create colored line for each long side
         rectangle.longSides.forEach(side => {
@@ -682,6 +1022,32 @@ export function visualizeStairModel(
           modelGroup.add(line);
           longSideLinesCount++;
         });
+        
+        // Calculate the midpoint between the two lines for label placement
+        const midpoint = {
+          x: ((line1.start.x + line1.end.x) / 2 + (line2.start.x + line2.end.x) / 2) / 2 - centerX,
+          y: ((line1.start.y + line1.end.y) / 2 + (line2.start.y + line2.end.y) / 2) / 2 - centerY,
+          z: ((line1.start.z + line1.end.z) / 2 + (line2.start.z + line2.end.z) / 2) / 2 - centerZ
+        };
+        
+        // Add dimension line with arrows between the long sides
+        const modelCenter = { x: centerX, y: centerY, z: centerZ };
+        const dimensionLine = createDimensionLine(line1, line2, modelCenter, 0xffff00); // Bright yellow for visibility
+        modelGroup.add(dimensionLine);
+        
+        // Offset the label a bit upward for better visibility
+        midpoint.z += 0.2;
+        
+        // Create measurement label
+        const label = createMeasurementLabel(
+          midpoint,
+          `${distanceRounded} units`,
+          0xffffff,
+          0.7 // Larger size for better readability
+        );
+        
+        // Add label to model
+        modelGroup.add(label);
         
         // Also add a very transparent version of the rectangle for context
         // This is just to show where the lines come from
@@ -729,6 +1095,17 @@ export function visualizeStairModel(
         // Add to model group
         modelGroup.add(transparentMesh);
       });
+      
+      // Update info text with step distances
+      if (stepDistances.length > 0) {
+        // Calculate average step distance
+        const avgDistance = stepDistances.reduce((sum, dist) => sum + dist, 0) / stepDistances.length;
+        const avgRounded = Math.round(avgDistance * 100) / 100;
+        
+        // Store for later use in info panel
+        (modelGroup.userData as any).stepDistances = stepDistances;
+        (modelGroup.userData as any).avgStepDistance = avgRounded;
+      }
       
       // Create ghost meshes for all non-selected faces
       stairModel.solids.forEach((solid, solidIndex) => {
@@ -1233,7 +1610,16 @@ export function visualizeStairModel(
   } else if (renderingMode === RenderingMode.ASPECT_RATIO_RECTANGLES) {
     infoContent += `Showing ${aspectRatioRectanglesCount} rectangles with aspect ratio between 1:3.5 and 1:4`;
   } else if (renderingMode === RenderingMode.LONG_SIDE_LINES) {
-    infoContent += `Showing ${longSideLinesCount} long side lines from uppermost rectangles`;
+    infoContent += `Showing ${longSideLinesCount} long side lines from filtered rectangles`;
+    
+    // Add step distance information if available
+    if ((modelGroup.userData as any).stepDistances && (modelGroup.userData as any).avgStepDistance) {
+      const stepDistances = (modelGroup.userData as any).stepDistances as number[];
+      const avgDistance = (modelGroup.userData as any).avgStepDistance as number;
+      
+      infoContent += `\nStep distances: ${stepDistances.map(d => d.toFixed(2)).join(', ')} units`;
+      infoContent += `\nAvg. step width: ${avgDistance.toFixed(2)} units`;
+    }
   }
   updateInfoText(infoContent);
   
