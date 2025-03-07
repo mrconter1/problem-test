@@ -62,8 +62,8 @@ export default function StairVisualizer() {
   
   // Camera state management
   const cameraStateRef = useRef<CameraState>({
-    yaw: Math.PI, // Initial yaw (face -Y direction)
-    pitch: 0      // Initial pitch (horizontal view)
+    yaw: 18.8 * (Math.PI / 180), // Initial yaw in radians (converted from 18.8°)
+    pitch: -17.5 * (Math.PI / 180) // Initial pitch in radians (converted from -17.5°)
   });
   
   // Movement state management
@@ -123,20 +123,11 @@ export default function StairVisualizer() {
     // Add axis labels
     addAxisLabels(scene);
     
-    // Set initial camera position closer to the scene center
-    camera.position.set(15, -15, 12);
-    camera.lookAt(0, 0, 0);
+    // Set initial camera position to the specified values
+    camera.position.set(-1.479, -8.422, 0.898);
     
-    // Update camera state to match camera position
-    const direction = new THREE.Vector3();
-    direction.subVectors(new THREE.Vector3(0, 0, 0), camera.position).normalize();
-    
-    // Calculate yaw (rotation around Z axis)
-    cameraStateRef.current.yaw = Math.atan2(direction.x, direction.y);
-    
-    // Calculate pitch (rotation up/down)
-    const horizontalDistance = Math.sqrt(direction.x * direction.x + direction.y * direction.y);
-    cameraStateRef.current.pitch = Math.atan2(direction.z, horizontalDistance);
+    // Update camera direction based on the set yaw and pitch
+    updateCameraDirection(camera, cameraStateRef.current);
     
     // Store refs
     sceneRef.current = scene;
@@ -246,21 +237,14 @@ export default function StairVisualizer() {
         
         // Only set camera position on initial load
         if (cameraRef.current && isFirstLoadRef.current) {
-          // Position camera closer to the model
-          cameraRef.current.position.set(15, -15, 12);
-          cameraRef.current.lookAt(0, 0, 0);
+          // Set camera to our specific position instead of positioning relative to model
+          cameraRef.current.position.set(-1.479, -8.422, 0.898);
           
-          // Update camera state
-          const direction = new THREE.Vector3();
-          direction.subVectors(new THREE.Vector3(0, 0, 0), cameraRef.current.position).normalize();
+          // Use our specific rotation
+          cameraStateRef.current.yaw = 18.8 * (Math.PI / 180); // 18.8 degrees in radians
+          cameraStateRef.current.pitch = -17.5 * (Math.PI / 180); // -17.5 degrees in radians
           
-          // Calculate yaw (rotation around Z axis)
-          cameraStateRef.current.yaw = Math.atan2(direction.x, direction.y);
-          
-          // Calculate pitch (rotation up/down)
-          const horizontalDistance = Math.sqrt(direction.x * direction.x + direction.y * direction.y);
-          cameraStateRef.current.pitch = Math.atan2(direction.z, horizontalDistance);
-          
+          // Update camera direction based on our yaw and pitch
           updateCameraDirection(cameraRef.current, cameraStateRef.current);
           
           console.log('Camera positioned at:', cameraRef.current.position);

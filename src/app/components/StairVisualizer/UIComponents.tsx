@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StairModel, RenderingMode } from './types';
+import * as THREE from 'three';
 
 interface InfoPanelProps {
   loadingText: string;
