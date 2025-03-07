@@ -124,7 +124,7 @@ export default function StairVisualizer() {
     addAxisLabels(scene);
     
     // Set initial camera position closer to the scene center
-    camera.position.set(30, -30, 20);
+    camera.position.set(15, -15, 12);
     camera.lookAt(0, 0, 0);
     
     // Update camera state to match camera position
@@ -247,7 +247,7 @@ export default function StairVisualizer() {
         // Only set camera position on initial load
         if (cameraRef.current && isFirstLoadRef.current) {
           // Position camera closer to the model
-          cameraRef.current.position.set(30, -30, 25);
+          cameraRef.current.position.set(15, -15, 12);
           cameraRef.current.lookAt(0, 0, 0);
           
           // Update camera state
