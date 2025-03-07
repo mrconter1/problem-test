@@ -121,14 +121,6 @@ export function visualizeStairModel(
     height: boundingBox.max.z - boundingBox.min.z
   });
   
-  // Add a marker at the model center for debugging
-  const centerMarker = new THREE.Mesh(
-    new THREE.SphereGeometry(3, 16, 16),
-    new THREE.MeshBasicMaterial({ color: 0xff0000 })
-  );
-  centerMarker.position.set(0, 0, 0);
-  modelGroup.add(centerMarker);
-  
   // Process solids
   console.log(`Processing ${stairModel.solids.length} solids...`);
   stairModel.solids.forEach((solid, solidIndex) => {
@@ -171,10 +163,6 @@ export function visualizeStairModel(
   const center = bbox.getCenter(new THREE.Vector3());
   console.log('Model size:', size);
   console.log('Model center after processing:', center);
-  
-  // Add bounding box helper
-  const bboxHelper = new THREE.Box3Helper(bbox, 0xffff00);
-  scene.add(bboxHelper);
   
   console.log(`Found ${horizontalRectangleCount} horizontal rectangles`);
   

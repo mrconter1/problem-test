@@ -113,19 +113,11 @@ export default function StairVisualizer() {
     const modelGroup = new THREE.Group();
     scene.add(modelGroup);
     
-    // Add a debug cube at the center
-    const debugCube = new THREE.Mesh(
-      new THREE.BoxGeometry(5, 5, 5),
-      new THREE.MeshLambertMaterial({ color: 0xffffff })
-    );
-    debugCube.position.set(0, 0, 0);
-    scene.add(debugCube);
-    
     // Add axis labels
     addAxisLabels(scene);
     
-    // Set initial camera position to be further back to see more of the scene
-    camera.position.set(60, -60, 40);
+    // Set initial camera position closer to the scene center
+    camera.position.set(30, -30, 20);
     camera.lookAt(0, 0, 0);
     
     // Update camera state to match camera position
@@ -246,8 +238,8 @@ export default function StairVisualizer() {
         
         // Set a better camera position to view the model
         if (cameraRef.current) {
-          // Position camera at a high angle to better see the model
-          cameraRef.current.position.set(60, -60, 60);
+          // Position camera closer to the model
+          cameraRef.current.position.set(30, -30, 25);
           cameraRef.current.lookAt(0, 0, 0);
           
           // Update camera state
