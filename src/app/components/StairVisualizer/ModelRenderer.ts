@@ -553,21 +553,29 @@ function createMeasurementLabel(
   const context = canvas.getContext('2d');
   if (!context) return new THREE.Sprite(); // Fallback if can't get context
   
-  canvas.width = 256;
-  canvas.height = 128;
+  // Set canvas dimensions
+  canvas.width = 196;
+  canvas.height = 96;
+  
+  // Make the background transparent
+  context.clearRect(0, 0, canvas.width, canvas.height);
   
   // Set up text style
-  context.fillStyle = '#00000088'; // Semi-transparent background
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  context.strokeStyle = '#ffffff';
-  context.lineWidth = 2;
-  context.strokeRect(0, 0, canvas.width, canvas.height);
-  
-  context.font = 'Bold 24px Arial';
-  context.fillStyle = '#ffffff';
+  context.font = 'Bold 32px Arial';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
-  context.fillText(text, canvas.width / 2, canvas.height / 2);
+  
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  
+  // Draw text outline (black border)
+  context.lineWidth = 5;
+  context.strokeStyle = '#000000';
+  context.strokeText(text, centerX, centerY);
+  
+  // Draw the text in white
+  context.fillStyle = '#ffffff';
+  context.fillText(text, centerX, centerY);
   
   // Create sprite material with the canvas
   const texture = new THREE.CanvasTexture(canvas);
@@ -1118,7 +1126,7 @@ export function visualizeStairModel(
           midpoint,
           `${distanceRounded} units`,
           0xffffff,
-          0.7 // Larger size for better readability
+          0.9 // Increased size from 0.7 to 0.9 for better readability
         );
         
         // Add label to model
