@@ -45,8 +45,9 @@ export function createAxisLabel(
 ): void {
   // Create a canvas for the label
   const canvas = document.createElement('canvas');
-  canvas.width = 32;
-  canvas.height = 32;
+  // Increase canvas size for better resolution
+  canvas.width = 128;
+  canvas.height = 128;
   
   // Get the context
   const context = canvas.getContext('2d');
@@ -55,30 +56,47 @@ export function createAxisLabel(
     return;
   }
   
-  // Set text properties
-  context.fillStyle = '#ffffff';
-  context.font = '24px Arial';
+  // Clear background
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  
+  // Set text properties - increase font size for better quality
+  context.font = 'Bold 72px Arial';
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   
-  // Draw text
-  context.fillText(text, canvas.width / 2, canvas.height / 2);
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
   
-  // Create texture
+  // Draw text outline (black border)
+  context.lineWidth = 6;
+  context.strokeStyle = '#000000';
+  context.strokeText(text, centerX, centerY);
+  
+  // Draw the text in the specified color
+  context.fillStyle = '#ffffff';
+  context.fillText(text, centerX, centerY);
+  
+  // Create texture with improved settings
   const texture = new THREE.CanvasTexture(canvas);
+  // Add this to improve sharpness
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.generateMipmaps = false;
   
   // Create sprite material
   const material = new THREE.SpriteMaterial({
     map: texture,
     color: color,
     depthTest: false,
-    depthWrite: false
+    depthWrite: false,
+    transparent: true
   });
   
   // Create sprite
   const sprite = new THREE.Sprite(material);
   sprite.position.copy(position);
-  sprite.scale.set(2, 2, 2);
+  // Adjust scale to match the increased canvas size
+  sprite.scale.set(2.5, 2.5, 2.5);
   
   // Add to scene
   scene.add(sprite);
