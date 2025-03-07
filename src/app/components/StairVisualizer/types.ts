@@ -5,7 +5,8 @@
 // Rendering modes for the stair model
 export enum RenderingMode {
   ALL_FACES = 'ALL_FACES',
-  FLAT_RECTANGLES = 'FLAT_RECTANGLES'
+  FLAT_RECTANGLES = 'FLAT_RECTANGLES',
+  CLOSED_RECTANGLES = 'CLOSED_RECTANGLES'
 }
 
 export interface Point {
