@@ -173,6 +173,7 @@ export function visualizeStairModel(
   console.log(`Processing ${stairModel.solids.length} solids...`);
   stairModel.solids.forEach((solid, solidIndex) => {
     console.log(`Solid ${solidIndex}: ${solid.faces.length} faces`);
+    
     // Process faces in the solid
     solid.faces.forEach(face => {
       // Process loops in the face
@@ -180,24 +181,51 @@ export function visualizeStairModel(
         const isHorizontalRectangle = isHorizontalLoop(loop);
         totalFaceCount++;
         
-        // Determine if we should render this face based on the rendering mode
-        let shouldRender = false;
-        if (renderingMode === RenderingMode.ALL_FACES) {
-          shouldRender = true;
-        } else if (renderingMode === RenderingMode.FLAT_RECTANGLES) {
-          shouldRender = isHorizontalRectangle;
-        }
+        // Get points from the loop
+        const points = getPointsFromLoop(loop);
         
-        if (shouldRender) {
-          // Get points from the loop
-          const points = getPointsFromLoop(loop);
-          
+        if (renderingMode === RenderingMode.ALL_FACES) {
           // Choose color
           const color = colors[colorIndex % colors.length];
           colorIndex++;
           
           if (isHorizontalRectangle) {
+            // Get z-coordinate from the first point
+            const z = points[0].z;
+            
+            // Convert to 2D points for ShapeGeometry, centered on model center
+            const points2D = points.map(p => ({ 
+              x: p.x - centerX, 
+              y: p.y - centerY 
+            }));
+            
+            // Create rectangle mesh
+            const rectangleMesh = createRectangle(points2D, z - centerZ, color);
+            
+            // Add to model group
+            modelGroup.add(rectangleMesh);
+          } else {
+            // For non-rectangular faces
+            // Adjust points to be relative to model center
+            const centeredPoints = points.map(p => ({
+              x: p.x - centerX,
+              y: p.y - centerY,
+              z: p.z - centerZ
+            }));
+            
+            // Create non-rectangular face mesh
+            const faceMesh = createFace(centeredPoints, color);
+            
+            // Add to model group
+            modelGroup.add(faceMesh);
+          }
+        } else if (renderingMode === RenderingMode.FLAT_RECTANGLES) {
+          if (isHorizontalRectangle) {
             horizontalRectangleCount++;
+            
+            // Choose color for rectangular face
+            const color = colors[colorIndex % colors.length];
+            colorIndex++;
             
             // Get z-coordinate from the first point
             const z = points[0].z;
@@ -213,8 +241,8 @@ export function visualizeStairModel(
             
             // Add to model group
             modelGroup.add(rectangleMesh);
-          } else if (renderingMode === RenderingMode.ALL_FACES) {
-            // For non-rectangular faces
+          } else {
+            // For non-rectangular faces in FLAT_RECTANGLES mode, create with high transparency
             // Adjust points to be relative to model center
             const centeredPoints = points.map(p => ({
               x: p.x - centerX,
@@ -222,11 +250,43 @@ export function visualizeStairModel(
               z: p.z - centerZ
             }));
             
-            // Create non-rectangular face mesh
-            const faceMesh = createFace(centeredPoints, color);
+            // Create non-rectangular face mesh with high transparency and single color
+            const ghostMaterial = new THREE.MeshLambertMaterial({ 
+              color: 0xcccccc, // Light gray for all non-rectangular faces
+              side: THREE.DoubleSide,
+              transparent: true,
+              opacity: 0.15, // Very transparent
+              depthWrite: false // Allow seeing through overlapping faces
+            });
+            
+            // Create geometry using BufferGeometry for arbitrary 3D face
+            const geometry = new THREE.BufferGeometry();
+            
+            // Create vertices
+            const vertices = [];
+            for (const point of centeredPoints) {
+              vertices.push(point.x, point.y, point.z);
+            }
+            
+            // Create triangulation (simple fan triangulation)
+            const indices = [];
+            for (let i = 1; i < centeredPoints.length - 1; i++) {
+              indices.push(0, i, i + 1);
+            }
+            
+            // Set attributes
+            geometry.setIndex(indices);
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            
+            // Compute normals
+            geometry.computeVertexNormals();
+            
+            // Create mesh
+            const ghostMesh = new THREE.Mesh(geometry, ghostMaterial);
+            ghostMesh.userData.isStairModelPart = true;
             
             // Add to model group
-            modelGroup.add(faceMesh);
+            modelGroup.add(ghostMesh);
           }
         }
       });
@@ -245,7 +305,7 @@ export function visualizeStairModel(
   if (renderingMode === RenderingMode.ALL_FACES) {
     infoContent += `Showing all faces (${totalFaceCount} faces total)`;
   } else {
-    infoContent += `Showing only flat rectangles (${horizontalRectangleCount} of ${totalFaceCount} faces)`;
+    infoContent += `Highlighting ${horizontalRectangleCount} flat rectangles of ${totalFaceCount} total faces`;
   }
   updateInfoText(infoContent);
   

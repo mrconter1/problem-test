@@ -297,7 +297,7 @@ export const RenderingModeToggle: React.FC<RenderingModeToggleProps> = ({
             }}/>
           </div>
           <label htmlFor="flat-rectangles" style={{ cursor: 'pointer' }}>
-            Flat Rectangles Only
+            Highlight Flat Rectangles
           </label>
         </div>
       </div>
