@@ -288,7 +288,8 @@ export default function StairVisualizer() {
         <InfoPanel loadingText={loadingText} />
         <ControlsPanel 
           stairModels={stairModels} 
-          onModelChange={handleModelChange} 
+          onModelChange={handleModelChange}
+          selectedModelId={selectedModelId || ''} 
         />
         <CameraInfo />
       </div>

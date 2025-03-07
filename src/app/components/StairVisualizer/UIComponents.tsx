@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StairModel } from './types';
 
 interface InfoPanelProps {
@@ -36,13 +36,23 @@ export const InfoPanel: React.FC<InfoPanelProps> = ({ loadingText }) => {
 interface ControlsPanelProps {
   stairModels: StairModel[];
   onModelChange: (modelId: string) => void;
+  selectedModelId?: string;
 }
 
 /**
  * Controls panel component
  */
-export const ControlsPanel: React.FC<ControlsPanelProps> = ({ stairModels, onModelChange }) => {
-  const [selectedId, setSelectedId] = useState<string>(stairModels.length > 0 ? stairModels[0].id : '');
+export const ControlsPanel: React.FC<ControlsPanelProps> = ({ stairModels, onModelChange, selectedModelId }) => {
+  const [selectedId, setSelectedId] = useState<string>(selectedModelId || (stairModels.length > 0 ? stairModels[0].id : ''));
+  
+  // Update selectedId when selectedModelId changes
+  useEffect(() => {
+    if (selectedModelId) {
+      setSelectedId(selectedModelId);
+    } else if (stairModels.length > 0 && !selectedId) {
+      setSelectedId(stairModels[0].id);
+    }
+  }, [selectedModelId, stairModels, selectedId]);
   
   const handleModelSelect = (modelId: string) => {
     setSelectedId(modelId);
