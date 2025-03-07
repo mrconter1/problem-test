@@ -48,4 +48,5 @@ export interface MovementState {
   right: boolean;
   up: boolean;
   down: boolean;
+  slowMode: boolean;
 } 

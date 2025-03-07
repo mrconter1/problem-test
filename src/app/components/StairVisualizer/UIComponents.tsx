@@ -172,6 +172,7 @@ export const CameraInfo: React.FC = () => {
       <p style={{ margin: '0 0 8px 0' }}>🚀 <strong>Space</strong>: Move up</p>
       <p style={{ margin: '0 0 8px 0' }}>⬇️ <strong>Shift</strong>: Move down</p>
       <p style={{ margin: '0 0 8px 0' }}>🖱️ <strong>Mouse</strong>: Look around</p>
+      <p style={{ margin: '0 0 8px 0' }}>🐢 <strong>Right-click</strong>: Hold for 1/4 speed movement</p>
     </div>
   );
 }; 

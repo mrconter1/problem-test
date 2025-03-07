@@ -73,7 +73,8 @@ export default function StairVisualizer() {
     left: false,
     right: false,
     up: false,
-    down: false
+    down: false,
+    slowMode: false
   });
   
   // State for models and UI

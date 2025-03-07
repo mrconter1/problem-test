@@ -37,6 +37,25 @@ export function setupCameraControls(
     event.preventDefault();
   });
   
+  // Handle right mouse button for slow movement
+  const handleMouseDown = (event: MouseEvent) => {
+    if (event.button === 2) { // Right mouse button
+      movement.slowMode = true;
+      console.log('Slow mode activated');
+    }
+  };
+  
+  const handleMouseUp = (event: MouseEvent) => {
+    if (event.button === 2) { // Right mouse button
+      movement.slowMode = false;
+      console.log('Slow mode deactivated');
+    }
+  };
+  
+  // Register mouse events
+  document.addEventListener('mousedown', handleMouseDown);
+  document.addEventListener('mouseup', handleMouseUp);
+  
   // Pointer lock change handler
   const handlePointerLockChange = () => {
     const isLocked = document.pointerLockElement === renderer.domElement;
@@ -153,11 +172,20 @@ export function setupCameraControls(
   // Return cleanup function
   return () => {
     console.log('Cleaning up camera controls');
-    renderer.domElement.removeEventListener('click', handleCanvasClick);
-    document.removeEventListener('pointerlockchange', handlePointerLockChange);
-    document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('keydown', handleKeyDown);
     document.removeEventListener('keyup', handleKeyUp);
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mousedown', handleMouseDown);
+    document.removeEventListener('mouseup', handleMouseUp);
+    document.removeEventListener('pointerlockchange', handlePointerLockChange);
+    renderer.domElement.removeEventListener('click', handleCanvasClick);
+    renderer.domElement.removeEventListener('contextmenu', (event) => event.preventDefault());
+    
+    // Remove control indicator if it exists
+    const indicator = document.getElementById('controlIndicator');
+    if (indicator) {
+      indicator.remove();
+    }
   };
 }
 
@@ -193,7 +221,11 @@ export function updateCameraPosition(
 ): void {
   if (!Object.values(movement).some(Boolean)) return; // Skip if no movement
   
-  const moveSpeed = 0.5;
+  // Base move speed
+  const baseMoveSpeed = 0.5;
+  
+  // Apply slow mode if right mouse button is pressed - now 1/4 of normal speed
+  const moveSpeed = movement.slowMode ? baseMoveSpeed * 0.25 : baseMoveSpeed;
   
   // Get the camera's forward and right directions
   const forward = new THREE.Vector3(0, 0, 0);
