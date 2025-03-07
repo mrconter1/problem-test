@@ -28,7 +28,7 @@ export function initializeScene(): THREE.Scene {
   scene.add(gridHelper);
   
   // Add axes helper - make it larger
-  const axesHelper = new THREE.AxesHelper(50);
+  const axesHelper = new THREE.AxesHelper(10);
   scene.add(axesHelper);
   
   return scene;
