@@ -367,33 +367,7 @@ export const RenderingModeToggle: React.FC<RenderingModeToggleProps> = ({
                       </div>
                     )}
                   </div>
-                  
-                  {/* Active indicator */}
-                  {currentMode === mode.mode && (
-                    <div style={{ 
-                      position: 'absolute',
-                      right: '8px',
-                      color: '#4a90e2',
-                      fontSize: '16px',
-                      fontWeight: 'bold'
-                    }}>
-                      ✓
-                    </div>
-                  )}
                 </div>
-                
-                {/* Arrow down (not for the last item) */}
-                {index < renderModes.length - 1 && (
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'center', 
-                    margin: '4px 0',
-                    color: '#888',
-                    fontSize: '12px'
-                  }}>
-                    ⤷
-                  </div>
-                )}
               </div>
             ))}
           </div>
