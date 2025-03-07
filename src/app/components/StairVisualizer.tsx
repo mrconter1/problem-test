@@ -633,7 +633,6 @@ export default function StairVisualizer() {
             <span>W/A/S/D:</span><span>Move</span>
             <span>Space:</span><span>Up</span>
             <span>Ctrl:</span><span>Down</span>
-            <span>Esc:</span><span>Exit</span>
           </div>
         </div>
       </div>
