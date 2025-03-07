@@ -26,4 +26,4 @@ I needed to identify the stair step with the smallest depth in architectural 3D 
      If any z value is different, discard the loop, otherwise keep it
    ```
 
-6. I use AI to write a very simply TypeScript script that reads the stair json file and simply initially prints out the number of flat horizontal faces it found.
+6. I used AI to write a simple TypeScript script (`stairAnalyzer.ts`) that reads the stair JSON file and prints out the number of flat horizontal faces found per stair.
