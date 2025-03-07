@@ -52,8 +52,44 @@
         scene.add(gridHelper);
         
         // Add axes helper
-        const axesHelper = new THREE.AxesHelper(5);
+        const axesHelper = new THREE.AxesHelper(10);
         scene.add(axesHelper);
+        
+        // Function to create text sprite for axis labels
+        function createTextSprite(text, color) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 256;
+            canvas.height = 256;
+            
+            context.font = "Bold 60px Arial";
+            context.fillStyle = color;
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(text, 128, 128);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.needsUpdate = true;
+            
+            const material = new THREE.SpriteMaterial({ map: texture });
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(5, 5, 1);
+            
+            return sprite;
+        }
+        
+        // Add axis labels
+        const xLabel = createTextSprite("X", "#ff0000");
+        xLabel.position.set(12, 0, 0);
+        scene.add(xLabel);
+        
+        const yLabel = createTextSprite("Y", "#00ff00");
+        yLabel.position.set(0, 12, 0);
+        scene.add(yLabel);
+        
+        const zLabel = createTextSprite("Z", "#0000ff");
+        zLabel.position.set(0, 0, 12);
+        scene.add(zLabel);
         
         // Function to create a rectangle from 4 points
         function createRectangle(points, z, color) {
@@ -143,6 +179,12 @@
                 
                 // Update info
                 infoElement.textContent += `\nFound ${horizontalRectangles.length} horizontal rectangles`;
+                
+                // Add a legend explaining the coordinate system
+                infoElement.textContent += `\n\nCoordinate System:`;
+                infoElement.textContent += `\nX-axis (Red): Width`;
+                infoElement.textContent += `\nY-axis (Green): Depth`;
+                infoElement.textContent += `\nZ-axis (Blue): Height`;
                 
                 // Adjust camera to see the model
                 const bbox = new THREE.Box3();
