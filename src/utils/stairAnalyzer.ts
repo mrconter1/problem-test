@@ -35,17 +35,6 @@ interface StairModel {
   solids: Solid[];
 }
 
-/**
- * Calculates the length of a line in 3D space.
- * This function is provided for future use in more advanced analyses.
- */
-function calculateLineLength(line: Line): number {
-  const dx = line.end.x - line.start.x;
-  const dy = line.end.y - line.start.y;
-  const dz = line.end.z - line.start.z;
-  return Math.sqrt(dx * dx + dy * dy + dz * dz);
-}
-
 // Check if a loop is horizontal (all points have the exact same z-value)
 function isHorizontalLoop(loop: Loop): boolean {
   if (loop.length === 0) return false;
