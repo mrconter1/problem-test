@@ -26,8 +26,4 @@ I needed to identify the stair step with the smallest depth in architectural 3D 
      If any z value is different, discard the loop, otherwise keep it
    ```
 
-6. I used AI to write a simple TypeScript script (`stairAnalyzer.ts`) that reads the stair JSON file and prints out the number of flat horizontal faces.
-
-7. I am intrigued to find that the stair models have the following counts of flat horizontal faces, 78, 67, and 80. From what I can count there should be much less more like one per stair step and then one more for the connecting platform. I look closer to on the 3d model and notice that the steps are not flat surfaces but actually is a cuboid. This means that I need to revise my approach a bit. Therefore the top rectangles of the vertical cuboids would also be flat horizontal faces.
-
-8.
+6. I used AI to write a simple TypeScript script (`stairAnalyzer.ts`) that reads the stair JSON file and prints out the number of flat horizontal faces found per stair object and per solid. This modular approach will make it easier to build upon for the next steps in our analysis.

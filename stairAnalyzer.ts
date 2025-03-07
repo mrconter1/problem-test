@@ -41,8 +41,8 @@ function isFlatHorizontal(loop: Loop): boolean {
   
   // Check all points in the loop
   for (const line of loop) {
-    if (Math.abs(line.start.z - referenceZ) != 0 || 
-        Math.abs(line.end.z - referenceZ) != 0) {
+    if (Math.abs(line.start.z - referenceZ) > 0.00001 || 
+        Math.abs(line.end.z - referenceZ) > 0.00001) {
       return false; // Not flat if any z-value differs
     }
   }
