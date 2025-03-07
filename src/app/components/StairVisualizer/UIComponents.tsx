@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StairModel } from './types';
 
 interface InfoPanelProps {
@@ -42,10 +42,17 @@ interface ControlsPanelProps {
  * Controls panel component
  */
 export const ControlsPanel: React.FC<ControlsPanelProps> = ({ stairModels, onModelChange }) => {
+  const [selectedId, setSelectedId] = useState<string>(stairModels.length > 0 ? stairModels[0].id : '');
+  
+  const handleModelSelect = (modelId: string) => {
+    setSelectedId(modelId);
+    onModelChange(modelId);
+  };
+  
   return (
     <div id="controls" style={{
       position: 'absolute',
-      top: '16px',
+      bottom: '16px',
       right: '16px',
       padding: '16px',
       backgroundColor: 'rgba(0,0,0,0.8)',
@@ -61,22 +68,67 @@ export const ControlsPanel: React.FC<ControlsPanelProps> = ({ stairModels, onMod
     }}>
       <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', fontWeight: 'bold' }}>Stair Models</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {stairModels.map((model, index) => (
+        {stairModels.map((model) => (
           <div key={model.id} style={{ display: 'flex', alignItems: 'center' }}>
-            <input
-              type="radio"
-              id={`model-${model.id}`}
-              name="stairModel"
-              value={model.id}
-              defaultChecked={index === 0}
-              onChange={() => onModelChange(model.id)}
-              style={{ marginRight: '12px', cursor: 'pointer' }}
-            />
+            <div 
+              style={{ 
+                position: 'relative',
+                width: '20px',
+                height: '20px',
+                marginRight: '12px',
+                cursor: 'pointer'
+              }}
+            >
+              <input
+                type="radio"
+                id={`model-${model.id}`}
+                name="stairModel"
+                value={model.id}
+                checked={selectedId === model.id}
+                onChange={() => handleModelSelect(model.id)}
+                style={{ 
+                  opacity: 0,
+                  position: 'absolute',
+                  width: '100%',
+                  height: '100%',
+                  margin: 0,
+                  cursor: 'pointer'
+                }}
+              />
+              <div 
+                style={{ 
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '18px',
+                  height: '18px',
+                  borderRadius: '50%',
+                  border: '2px solid #4a90e2',
+                  backgroundColor: 'transparent',
+                  boxSizing: 'border-box',
+                  pointerEvents: 'none'
+                }}
+              />
+              <div 
+                style={{ 
+                  position: 'absolute',
+                  top: '4px',
+                  left: '4px',
+                  width: '10px',
+                  height: '10px',
+                  borderRadius: '50%',
+                  backgroundColor: '#4a90e2',
+                  opacity: selectedId === model.id ? 1 : 0,
+                  transition: 'opacity 0.2s',
+                  pointerEvents: 'none'
+                }}
+              />
+            </div>
             <label 
               htmlFor={`model-${model.id}`}
               style={{ cursor: 'pointer' }}
             >
-              {model.name}
+              {model.id}
             </label>
           </div>
         ))}
