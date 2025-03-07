@@ -399,6 +399,86 @@ function calculateRectangleAspectRatio(points: Point[]): {
 }
 
 /**
+ * Create a line from two points
+ */
+function createLine(
+  start: Point,
+  end: Point,
+  color: number = 0xff0000,
+  lineWidth: number = 3
+): THREE.Line {
+  // Create geometry
+  const geometry = new THREE.BufferGeometry();
+  
+  // Define positions - adjust for model center
+  const positions = new Float32Array([
+    start.x, start.y, start.z,
+    end.x, end.y, end.z
+  ]);
+  
+  // Set the position attribute
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  
+  // Create material
+  const material = new THREE.LineBasicMaterial({ 
+    color: color,
+    linewidth: lineWidth // Note: linewidth may not work on all platforms due to WebGL limitations
+  });
+  
+  // Create line
+  const line = new THREE.Line(geometry, material);
+  line.userData.isStairModelPart = true;
+  line.userData.isLine = true;
+  
+  return line;
+}
+
+/**
+ * Extract long sides from a rectangle
+ * @param loop The rectangle loop
+ * @returns Array of line segments representing the long sides [start1, end1, start2, end2]
+ */
+function extractLongSides(
+  points: Point[]
+): { longSides: { start: Point; end: Point }[], aspectRatio: number } {
+  if (points.length !== 4) {
+    console.warn('Cannot extract long sides: not a rectangle');
+    return { longSides: [], aspectRatio: 0 };
+  }
+  
+  // Calculate distances between all pairs of points
+  const lines: { start: Point; end: Point; length: number }[] = [];
+  
+  for (let i = 0; i < points.length; i++) {
+    const nextIndex = (i + 1) % points.length;
+    const start = points[i];
+    const end = points[nextIndex];
+    
+    const length = Math.sqrt(
+      Math.pow(end.x - start.x, 2) +
+      Math.pow(end.y - start.y, 2) +
+      Math.pow(end.z - start.z, 2)
+    );
+    
+    lines.push({ start, end, length });
+  }
+  
+  // Sort lines by length in descending order
+  lines.sort((a, b) => b.length - a.length);
+  
+  // The first two lines will be the longest (should be parallel sides in a rectangle)
+  const longSides = [
+    { start: lines[0].start, end: lines[0].end },
+    { start: lines[1].start, end: lines[1].end }
+  ];
+  
+  // Calculate aspect ratio (longest side ÷ shortest side)
+  const aspectRatio = lines[0].length / lines[3].length;
+  
+  return { longSides, aspectRatio };
+}
+
+/**
  * Visualize a stair model
  */
 export function visualizeStairModel(
@@ -423,7 +503,8 @@ export function visualizeStairModel(
   
   // Clear any existing stair model parts
   scene.children.forEach(child => {
-    if (child instanceof THREE.Mesh && child.userData.isStairModelPart) {
+    if (child instanceof THREE.Mesh && child.userData.isStairModelPart ||
+        child instanceof THREE.Line && child.userData.isStairModelPart) {
       scene.remove(child);
     }
   });
@@ -457,6 +538,7 @@ export function visualizeStairModel(
   let centerMarkersCount = 0;
   let uppermostRectanglesCount = 0;
   let aspectRatioRectanglesCount = 0;
+  let longSideLinesCount = 0;
   let totalFaceCount = 0;
   
   const colors = [0x4287f5, 0x42f5a7, 0xf542cb, 0xf5a742, 0xf54242, 0x42f5dd];
@@ -474,9 +556,10 @@ export function visualizeStairModel(
     height: boundingBox.max.z - boundingBox.min.z
   });
   
-  // Special handling for UPPERMOST_RECTANGLES and ASPECT_RATIO_RECTANGLES modes
+  // Special handling for advanced rendering modes
   if (renderingMode === RenderingMode.UPPERMOST_RECTANGLES || 
-      renderingMode === RenderingMode.ASPECT_RATIO_RECTANGLES) {
+      renderingMode === RenderingMode.ASPECT_RATIO_RECTANGLES ||
+      renderingMode === RenderingMode.LONG_SIDE_LINES) {
     // First pass: collect all closed horizontal rectangles
     const allRectangles: Array<{
       index: number;
@@ -487,6 +570,7 @@ export function visualizeStairModel(
       points: Point[];
       color: number;
       aspectRatio?: number;
+      longSides?: { start: Point; end: Point }[];
     }> = [];
     
     let rectangleIndex = 0;
@@ -506,11 +590,20 @@ export function visualizeStairModel(
             const color = colors[colorIndex % colors.length];
             colorIndex++;
             
-            // Calculate aspect ratio if needed
+            // Calculate aspect ratio and long sides if needed
             let aspectRatio = undefined;
-            if (renderingMode === RenderingMode.ASPECT_RATIO_RECTANGLES) {
-              const ratioInfo = calculateRectangleAspectRatio(points);
-              aspectRatio = ratioInfo.ratio;
+            let longSides = undefined;
+            
+            if (renderingMode === RenderingMode.ASPECT_RATIO_RECTANGLES || 
+                renderingMode === RenderingMode.LONG_SIDE_LINES) {
+              if (renderingMode === RenderingMode.LONG_SIDE_LINES) {
+                const sideInfo = extractLongSides(points);
+                longSides = sideInfo.longSides;
+                aspectRatio = sideInfo.aspectRatio;
+              } else {
+                const ratioInfo = calculateRectangleAspectRatio(points);
+                aspectRatio = ratioInfo.ratio;
+              }
             }
             
             allRectangles.push({
@@ -521,7 +614,8 @@ export function visualizeStairModel(
               center,
               points,
               color,
-              aspectRatio
+              aspectRatio,
+              longSides
             });
           }
         });
@@ -537,117 +631,288 @@ export function visualizeStairModel(
     console.log(`After filtering, keeping ${uppermostRectangles.length} uppermost rectangles`);
     uppermostRectanglesCount = uppermostRectangles.length;
     
-    // For aspect ratio mode, apply additional aspect ratio filter
-    let rectanglesToRender = uppermostRectangles;
-    
-    if (renderingMode === RenderingMode.ASPECT_RATIO_RECTANGLES) {
+    // Special handling for long side lines
+    if (renderingMode === RenderingMode.LONG_SIDE_LINES) {
+      // First filter rectangles by aspect ratio, similar to ASPECT_RATIO_RECTANGLES mode
       const minRatio = 3.5;  // 1:3.5
       const maxRatio = 4.0;  // 1:4
       
       // Filter rectangles by aspect ratio
-      rectanglesToRender = uppermostRectangles.filter(rect => {
+      const aspectRatioRects = uppermostRectangles.filter(rect => {
         if (rect.aspectRatio === undefined) return false;
         return rect.aspectRatio >= minRatio && rect.aspectRatio <= maxRatio;
       });
       
-      aspectRatioRectanglesCount = rectanglesToRender.length;
-      console.log(`After aspect ratio filtering (${minRatio}:1 to ${maxRatio}:1), keeping ${aspectRatioRectanglesCount} rectangles`);
-    }
-    
-    // Render the filtered rectangles
-    rectanglesToRender.forEach(rectangle => {
-      // Convert to 2D points for ShapeGeometry, centered on model center
-      const points2D = rectangle.points.map(p => ({ 
-        x: p.x - centerX, 
-        y: p.y - centerY 
-      }));
+      aspectRatioRectanglesCount = aspectRatioRects.length;
+      console.log(`After aspect ratio filtering (${minRatio}:1 to ${maxRatio}:1), keeping ${aspectRatioRectanglesCount} rectangles for line extraction`);
       
-      // Get z-coordinate from the center
-      const z = rectangle.points[0].z;
+      // Use the aspect ratio filtered rectangles for rendering lines
+      let lineIndex = 0;
       
-      // Create rectangle mesh
-      const rectangleMesh = createRectangle(points2D, z - centerZ, rectangle.color);
-      
-      // Add to model group
-      modelGroup.add(rectangleMesh);
-      
-      // If in aspect ratio mode, add a label with the aspect ratio
-      if (renderingMode === RenderingMode.ASPECT_RATIO_RECTANGLES && rectangle.aspectRatio !== undefined) {
-        // Will be implemented with a text label showing the aspect ratio
-        console.log(`Rectangle with aspect ratio: ${rectangle.aspectRatio.toFixed(2)}`);
-      }
-    });
-    
-    // Create ghost meshes for all non-selected faces
-    stairModel.solids.forEach((solid, solidIndex) => {
-      solid.faces.forEach((face, faceIndex) => {
-        face.loops.forEach((loop, loopIndex) => {
-          // Skip the rectangles we've already rendered
-          const isRectangle = isClosedRectangle(loop);
-          const isHorizontalRectangle = isHorizontalLoop(loop);
+      aspectRatioRects.forEach(rectangle => {
+        if (!rectangle.longSides || rectangle.longSides.length === 0) return;
+        
+        // Create colored line for each long side
+        rectangle.longSides.forEach(side => {
+          const lineColor = colors[lineIndex % colors.length];
+          lineIndex++;
           
-          if (isRectangle && isHorizontalRectangle) {
-            // Check if this is one of our rendered rectangles
-            const isRendered = rectanglesToRender.some(rect => 
-              rect.solidIndex === solidIndex && 
-              rect.faceIndex === faceIndex && 
-              rect.loopIndex === loopIndex
-            );
-            
-            // If this rectangle is rendered, skip creating a ghost mesh
-            if (isRendered) {
-              return;
-            }
-          }
+          // Adjust coordinates to be relative to model center
+          const adjustedStart = {
+            x: side.start.x - centerX,
+            y: side.start.y - centerY,
+            z: side.start.z - centerZ
+          };
           
-          // Create ghost mesh for all other faces
-          const points = getPointsFromLoop(loop);
-          const centeredPoints = points.map(p => ({
-            x: p.x - centerX,
-            y: p.y - centerY,
-            z: p.z - centerZ
-          }));
+          const adjustedEnd = {
+            x: side.end.x - centerX,
+            y: side.end.y - centerY,
+            z: side.end.z - centerZ
+          };
           
-          // Create non-rectangular face mesh with high transparency and single color
-          const ghostMaterial = new THREE.MeshLambertMaterial({ 
-            color: 0xcccccc, // Light gray for all non-selected faces
-            side: THREE.DoubleSide,
-            transparent: true,
-            opacity: 0.15, // Very transparent
-            depthWrite: false // Allow seeing through overlapping faces
-          });
-          
-          // Create geometry using BufferGeometry for arbitrary 3D face
-          const geometry = new THREE.BufferGeometry();
-          
-          // Create vertices
-          const vertices = [];
-          for (const point of centeredPoints) {
-            vertices.push(point.x, point.y, point.z);
-          }
-          
-          // Create triangulation (simple fan triangulation)
-          const indices = [];
-          for (let i = 1; i < centeredPoints.length - 1; i++) {
-            indices.push(0, i, i + 1);
-          }
-          
-          // Set attributes
-          geometry.setIndex(indices);
-          geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-          
-          // Compute normals
-          geometry.computeVertexNormals();
-          
-          // Create mesh
-          const ghostMesh = new THREE.Mesh(geometry, ghostMaterial);
-          ghostMesh.userData.isStairModelPart = true;
+          // Create line 
+          const line = createLine(
+            adjustedStart,
+            adjustedEnd,
+            lineColor,
+            5 // Thicker line for better visibility
+          );
           
           // Add to model group
-          modelGroup.add(ghostMesh);
+          modelGroup.add(line);
+          longSideLinesCount++;
+        });
+        
+        // Also add a very transparent version of the rectangle for context
+        // This is just to show where the lines come from
+        const points2D = rectangle.points.map(p => ({ 
+          x: p.x - centerX, 
+          y: p.y - centerY 
+        }));
+        
+        // Get z-coordinate from the center
+        const z = rectangle.points[0].z;
+        
+        // Create a transparent material
+        const transparentMaterial = new THREE.MeshLambertMaterial({ 
+          color: rectangle.color, 
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.2,
+          depthWrite: false
+        });
+        
+        // Create rectangle geometry
+        const shape = new THREE.Shape();
+        shape.moveTo(points2D[0].x, points2D[0].y);
+        shape.lineTo(points2D[1].x, points2D[1].y);
+        shape.lineTo(points2D[2].x, points2D[2].y);
+        shape.lineTo(points2D[3].x, points2D[3].y);
+        shape.lineTo(points2D[0].x, points2D[0].y);
+        
+        // Create geometry
+        const geometry = new THREE.ShapeGeometry(shape);
+        
+        // Set z-coordinate for all vertices
+        const positionAttribute = geometry.getAttribute('position');
+        for (let i = 0; i < positionAttribute.count; i++) {
+          positionAttribute.setZ(i, z - centerZ);
+        }
+        
+        // Update normals
+        geometry.computeVertexNormals();
+        
+        // Create mesh
+        const transparentMesh = new THREE.Mesh(geometry, transparentMaterial);
+        transparentMesh.userData.isStairModelPart = true;
+        
+        // Add to model group
+        modelGroup.add(transparentMesh);
+      });
+      
+      // Create ghost meshes for all non-selected faces
+      stairModel.solids.forEach((solid, solidIndex) => {
+        solid.faces.forEach((face, faceIndex) => {
+          face.loops.forEach((loop, loopIndex) => {
+            // Skip the rectangles we've already rendered
+            const isRectangle = isClosedRectangle(loop);
+            const isHorizontalRectangle = isHorizontalLoop(loop);
+            
+            if (isRectangle && isHorizontalRectangle) {
+              // Check if this is one of our rendered rectangles
+              const isRendered = aspectRatioRects.some(rect => 
+                rect.solidIndex === solidIndex && 
+                rect.faceIndex === faceIndex && 
+                rect.loopIndex === loopIndex
+              );
+              
+              // If this rectangle is rendered, skip creating a ghost mesh
+              if (isRendered) {
+                return;
+              }
+            }
+            
+            // Create ghost mesh for all other faces
+            const points = getPointsFromLoop(loop);
+            const centeredPoints = points.map(p => ({
+              x: p.x - centerX,
+              y: p.y - centerY,
+              z: p.z - centerZ
+            }));
+            
+            // Create non-rectangular face mesh with high transparency and single color
+            const ghostMaterial = new THREE.MeshLambertMaterial({ 
+              color: 0xcccccc, // Light gray for all non-selected faces
+              side: THREE.DoubleSide,
+              transparent: true,
+              opacity: 0.05, // Very transparent
+              depthWrite: false // Allow seeing through overlapping faces
+            });
+            
+            // Create geometry using BufferGeometry for arbitrary 3D face
+            const geometry = new THREE.BufferGeometry();
+            
+            // Create vertices
+            const vertices = [];
+            for (const point of centeredPoints) {
+              vertices.push(point.x, point.y, point.z);
+            }
+            
+            // Create triangulation (simple fan triangulation)
+            const indices = [];
+            for (let i = 1; i < centeredPoints.length - 1; i++) {
+              indices.push(0, i, i + 1);
+            }
+            
+            // Set attributes
+            geometry.setIndex(indices);
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            
+            // Compute normals
+            geometry.computeVertexNormals();
+            
+            // Create mesh
+            const ghostMesh = new THREE.Mesh(geometry, ghostMaterial);
+            ghostMesh.userData.isStairModelPart = true;
+            
+            // Add to model group
+            modelGroup.add(ghostMesh);
+          });
         });
       });
-    });
+    } else {
+      // For aspect ratio or uppermost rectangles modes 
+      let rectanglesToRender = uppermostRectangles;
+      
+      if (renderingMode === RenderingMode.ASPECT_RATIO_RECTANGLES) {
+        const minRatio = 3.5;  // 1:3.5
+        const maxRatio = 4.0;  // 1:4
+        
+        // Filter rectangles by aspect ratio
+        rectanglesToRender = uppermostRectangles.filter(rect => {
+          if (rect.aspectRatio === undefined) return false;
+          return rect.aspectRatio >= minRatio && rect.aspectRatio <= maxRatio;
+        });
+        
+        aspectRatioRectanglesCount = rectanglesToRender.length;
+        console.log(`After aspect ratio filtering (${minRatio}:1 to ${maxRatio}:1), keeping ${aspectRatioRectanglesCount} rectangles`);
+      }
+      
+      // Render the filtered rectangles
+      rectanglesToRender.forEach(rectangle => {
+        // Convert to 2D points for ShapeGeometry, centered on model center
+        const points2D = rectangle.points.map(p => ({ 
+          x: p.x - centerX, 
+          y: p.y - centerY 
+        }));
+        
+        // Get z-coordinate from the center
+        const z = rectangle.points[0].z;
+        
+        // Create rectangle mesh
+        const rectangleMesh = createRectangle(points2D, z - centerZ, rectangle.color);
+        
+        // Add to model group
+        modelGroup.add(rectangleMesh);
+        
+        // If in aspect ratio mode, add a label with the aspect ratio
+        if (renderingMode === RenderingMode.ASPECT_RATIO_RECTANGLES && rectangle.aspectRatio !== undefined) {
+          // Will be implemented with a text label showing the aspect ratio
+          console.log(`Rectangle with aspect ratio: ${rectangle.aspectRatio.toFixed(2)}`);
+        }
+      });
+      
+      // Create ghost meshes for all non-selected faces
+      stairModel.solids.forEach((solid, solidIndex) => {
+        solid.faces.forEach((face, faceIndex) => {
+          face.loops.forEach((loop, loopIndex) => {
+            // Skip the rectangles we've already rendered
+            const isRectangle = isClosedRectangle(loop);
+            const isHorizontalRectangle = isHorizontalLoop(loop);
+            
+            if (isRectangle && isHorizontalRectangle) {
+              // Check if this is one of our rendered rectangles
+              const isRendered = rectanglesToRender.some(rect => 
+                rect.solidIndex === solidIndex && 
+                rect.faceIndex === faceIndex && 
+                rect.loopIndex === loopIndex
+              );
+              
+              // If this rectangle is rendered, skip creating a ghost mesh
+              if (isRendered) {
+                return;
+              }
+            }
+            
+            // Create ghost mesh for all other faces
+            const points = getPointsFromLoop(loop);
+            const centeredPoints = points.map(p => ({
+              x: p.x - centerX,
+              y: p.y - centerY,
+              z: p.z - centerZ
+            }));
+            
+            // Create non-rectangular face mesh with high transparency and single color
+            const ghostMaterial = new THREE.MeshLambertMaterial({ 
+              color: 0xcccccc, // Light gray for all non-selected faces
+              side: THREE.DoubleSide,
+              transparent: true,
+              opacity: 0.15, // Very transparent
+              depthWrite: false // Allow seeing through overlapping faces
+            });
+            
+            // Create geometry using BufferGeometry for arbitrary 3D face
+            const geometry = new THREE.BufferGeometry();
+            
+            // Create vertices
+            const vertices = [];
+            for (const point of centeredPoints) {
+              vertices.push(point.x, point.y, point.z);
+            }
+            
+            // Create triangulation (simple fan triangulation)
+            const indices = [];
+            for (let i = 1; i < centeredPoints.length - 1; i++) {
+              indices.push(0, i, i + 1);
+            }
+            
+            // Set attributes
+            geometry.setIndex(indices);
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            
+            // Compute normals
+            geometry.computeVertexNormals();
+            
+            // Create mesh
+            const ghostMesh = new THREE.Mesh(geometry, ghostMaterial);
+            ghostMesh.userData.isStairModelPart = true;
+            
+            // Add to model group
+            modelGroup.add(ghostMesh);
+          });
+        });
+      });
+    }
   } else {
     // Standard processing for other modes
     // Process solids
@@ -967,6 +1232,8 @@ export function visualizeStairModel(
     infoContent += `Showing ${uppermostRectanglesCount} uppermost closed horizontal rectangles`;
   } else if (renderingMode === RenderingMode.ASPECT_RATIO_RECTANGLES) {
     infoContent += `Showing ${aspectRatioRectanglesCount} rectangles with aspect ratio between 1:3.5 and 1:4`;
+  } else if (renderingMode === RenderingMode.LONG_SIDE_LINES) {
+    infoContent += `Showing ${longSideLinesCount} long side lines from uppermost rectangles`;
   }
   updateInfoText(infoContent);
   
@@ -980,6 +1247,8 @@ export function visualizeStairModel(
     return uppermostRectanglesCount;
   } else if (renderingMode === RenderingMode.ASPECT_RATIO_RECTANGLES) {
     return aspectRatioRectanglesCount;
+  } else if (renderingMode === RenderingMode.LONG_SIDE_LINES) {
+    return longSideLinesCount;
   }
   return totalFaceCount;
 }
