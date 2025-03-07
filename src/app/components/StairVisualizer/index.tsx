@@ -85,7 +85,7 @@ export default function StairVisualizer() {
   const [stairModels, setStairModels] = useState<StairModel[]>([]);
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const [loadingText, setLoadingText] = useState<string>("Loading stair model...");
-  const [renderingMode, setRenderingMode] = useState<RenderingMode>(RenderingMode.ALL_FACES);
+  const [renderingMode, setRenderingMode] = useState<RenderingMode>(RenderingMode.LONG_SIDE_LINES);
   
   // Animation frame management
   const requestRef = useRef<number | null>(null);
