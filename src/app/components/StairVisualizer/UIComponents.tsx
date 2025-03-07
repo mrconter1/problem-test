@@ -172,7 +172,7 @@ export const CameraInfo: React.FC = () => {
       <p style={{ margin: '0 0 8px 0' }}>🚀 <strong>Space</strong>: Move up</p>
       <p style={{ margin: '0 0 8px 0' }}>⬇️ <strong>Shift</strong>: Move down</p>
       <p style={{ margin: '0 0 8px 0' }}>🖱️ <strong>Mouse</strong>: Look around</p>
-      <p style={{ margin: '0 0 0 0' }}>🐢 <strong>Right-click</strong>: Hold for 1/4 speed movement</p>
+      <p style={{ margin: '0 0 0 0' }}>🐢 <strong>Right-click</strong>: Hold for slow movement</p>
     </div>
   );
 };
@@ -297,7 +297,7 @@ export const RenderingModeToggle: React.FC<RenderingModeToggleProps> = ({
             }}/>
           </div>
           <label htmlFor="flat-rectangles" style={{ cursor: 'pointer' }}>
-            Highlight Flat Rectangles
+            Horizontal Rectangles
           </label>
         </div>
       </div>
