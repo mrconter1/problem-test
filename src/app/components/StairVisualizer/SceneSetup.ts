@@ -89,9 +89,9 @@ export function createAxisLabel(
  */
 export function addAxisLabels(scene: THREE.Scene): void {
   // Create axis labels
-  createAxisLabel(scene, 'X', new THREE.Vector3(4, 0, 0), 0xff0000);
-  createAxisLabel(scene, 'Y', new THREE.Vector3(0, 4, 0), 0x00ff00);
-  createAxisLabel(scene, 'Z', new THREE.Vector3(0, 0, 4), 0x0000ff);
+  createAxisLabel(scene, 'X', new THREE.Vector3(11, 0, 0), 0xff0000);
+  createAxisLabel(scene, 'Y', new THREE.Vector3(0, 11, 0), 0x00ff00);
+  createAxisLabel(scene, 'Z', new THREE.Vector3(0, 0, 11), 0x0000ff);
 }
 
 /**
