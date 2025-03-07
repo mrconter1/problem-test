@@ -805,6 +805,93 @@ function createDimensionLine(
 }
 
 /**
+ * Add a helper function to log detailed line information
+ */
+function logLineDetails(line1: { start: Point; end: Point }, line2: { start: Point; end: Point }, distance: number, stepIndex: number) {
+  console.log(`\n----- STEP ${stepIndex + 1} DETAILED MEASUREMENTS -----`);
+  
+  // Log line 1 coordinates
+  console.log(`Line 1:`);
+  console.log(`  Start: (${line1.start.x.toFixed(4)}, ${line1.start.y.toFixed(4)}, ${line1.start.z.toFixed(4)})`);
+  console.log(`  End:   (${line1.end.x.toFixed(4)}, ${line1.end.y.toFixed(4)}, ${line1.end.z.toFixed(4)})`);
+  console.log(`  Length: ${Math.sqrt(
+    Math.pow(line1.end.x - line1.start.x, 2) +
+    Math.pow(line1.end.y - line1.start.y, 2) +
+    Math.pow(line1.end.z - line1.start.z, 2)
+  ).toFixed(4)}`);
+  
+  // Log line 2 coordinates
+  console.log(`Line 2:`);
+  console.log(`  Start: (${line2.start.x.toFixed(4)}, ${line2.start.y.toFixed(4)}, ${line2.start.z.toFixed(4)})`);
+  console.log(`  End:   (${line2.end.x.toFixed(4)}, ${line2.end.y.toFixed(4)}, ${line2.end.z.toFixed(4)})`);
+  console.log(`  Length: ${Math.sqrt(
+    Math.pow(line2.end.x - line2.start.x, 2) +
+    Math.pow(line2.end.y - line2.start.y, 2) +
+    Math.pow(line2.end.z - line2.start.z, 2)
+  ).toFixed(4)}`);
+  
+  // Log distance calculation steps
+  console.log(`Distance Calculation:`);
+  
+  // Calculate direction vector of the first line
+  const dirVector = {
+    x: line1.end.x - line1.start.x,
+    y: line1.end.y - line1.start.y,
+    z: line1.end.z - line1.start.z
+  };
+  console.log(`  Direction vector: (${dirVector.x.toFixed(4)}, ${dirVector.y.toFixed(4)}, ${dirVector.z.toFixed(4)})`);
+  
+  // Normalize it
+  const length = Math.sqrt(dirVector.x * dirVector.x + dirVector.y * dirVector.y + dirVector.z * dirVector.z);
+  const unitDir = {
+    x: dirVector.x / length,
+    y: dirVector.y / length,
+    z: dirVector.z / length
+  };
+  console.log(`  Unit direction: (${unitDir.x.toFixed(4)}, ${unitDir.y.toFixed(4)}, ${unitDir.z.toFixed(4)})`);
+  
+  // Calculate a vector from a point on line1 to a point on line2
+  const connectingVector = {
+    x: line2.start.x - line1.start.x,
+    y: line2.start.y - line1.start.y,
+    z: line2.start.z - line1.start.z
+  };
+  console.log(`  Connecting vector: (${connectingVector.x.toFixed(4)}, ${connectingVector.y.toFixed(4)}, ${connectingVector.z.toFixed(4)})`);
+  
+  // Calculate the dot product
+  const dot = connectingVector.x * unitDir.x + 
+              connectingVector.y * unitDir.y + 
+              connectingVector.z * unitDir.z;
+  console.log(`  Dot product: ${dot.toFixed(4)}`);
+  
+  // Project connecting vector onto unit direction
+  const projectionVector = {
+    x: dot * unitDir.x,
+    y: dot * unitDir.y,
+    z: dot * unitDir.z
+  };
+  console.log(`  Projection vector: (${projectionVector.x.toFixed(4)}, ${projectionVector.y.toFixed(4)}, ${projectionVector.z.toFixed(4)})`);
+  
+  // Perpendicular component
+  const perpVector = {
+    x: connectingVector.x - projectionVector.x,
+    y: connectingVector.y - projectionVector.y,
+    z: connectingVector.z - projectionVector.z
+  };
+  console.log(`  Perpendicular vector: (${perpVector.x.toFixed(4)}, ${perpVector.y.toFixed(4)}, ${perpVector.z.toFixed(4)})`);
+  
+  // Calculate distance
+  const calculatedDistance = Math.sqrt(
+    perpVector.x * perpVector.x + 
+    perpVector.y * perpVector.y + 
+    perpVector.z * perpVector.z
+  );
+  console.log(`  Calculated distance: ${calculatedDistance.toFixed(4)}`);
+  console.log(`  Rounded distance: ${distance.toFixed(4)}`);
+  console.log(`---------------------------------------\n`);
+}
+
+/**
  * Visualize a stair model
  */
 export function visualizeStairModel(
@@ -978,7 +1065,11 @@ export function visualizeStairModel(
       // Keep track of step measurements for the info panel
       const stepDistances: number[] = [];
       
-      aspectRatioRects.forEach(rectangle => {
+      // Log start of detailed measurements
+      console.log("\n=== DETAILED STEP MEASUREMENTS ===");
+      console.log("The following measurements can be used to manually verify distances");
+      
+      aspectRatioRects.forEach((rectangle, rectIndex) => {
         if (!rectangle.longSides || rectangle.longSides.length < 2) return;
         
         // Calculate distance between the two long sides
@@ -990,7 +1081,8 @@ export function visualizeStairModel(
         const distanceRounded = Math.round(distance * 100) / 100;
         stepDistances.push(distanceRounded);
         
-        console.log(`Step distance: ${distanceRounded} units`);
+        // Log detailed information about the lines and distance calculation
+        logLineDetails(line1, line2, distanceRounded, rectIndex);
         
         // Create colored line for each long side
         rectangle.longSides.forEach(side => {
