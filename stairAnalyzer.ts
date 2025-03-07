@@ -32,22 +32,28 @@ interface StairModel {
   solids: Solid[];
 }
 
-// Function to check if a loop forms a flat horizontal surface
-function isFlatHorizontal(loop: Loop): boolean {
+// Calculate the length of a line
+function calculateLineLength(line: Line): number {
+  const dx = line.end.x - line.start.x;
+  const dy = line.end.y - line.start.y;
+  const dz = line.end.z - line.start.z;
+  return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+// Check if a loop is horizontal (all points have the exact same z-value)
+function isHorizontalLoop(loop: Loop): boolean {
   if (loop.length === 0) return false;
   
-  // Get the z-value of the first point
   const referenceZ = loop[0].start.z;
   
-  // Check all points in the loop
+  // Check all points in the loop for exact equality
   for (const line of loop) {
-    if (Math.abs(line.start.z - referenceZ) > 0.00001 || 
-        Math.abs(line.end.z - referenceZ) > 0.00001) {
-      return false; // Not flat if any z-value differs
+    if (line.start.z !== referenceZ || line.end.z !== referenceZ) {
+      return false; // Not horizontal if any z-value differs
     }
   }
   
-  return true; // All z-values match, it's a flat horizontal surface
+  return true; // All z-values are exactly the same, it's a horizontal loop
 }
 
 // Main function
@@ -66,25 +72,72 @@ function analyzeStairs(filePath: string): void {
     modelsArray.forEach((stairModel, index) => {
       console.log(`Stair Model #${index + 1} (ID: ${stairModel.id}, Name: ${stairModel.name})`);
       
-      let flatFaceCount = 0;
+      // Store horizontal 4-line loops
+      let horizontalRectangles: { 
+        solidIndex: number;
+        faceIndex: number;
+        loopIndex: number;
+        z: number;
+      }[] = [];
       
-      // Iterate through all solids and their faces
+      let totalLoops = 0;
+      let fourLineLoops = 0;
+      
+      // Process each loop
       stairModel.solids.forEach((solid, solidIndex) => {
-        let solidFlatFaces = 0;
-        
-        solid.faces.forEach(face => {
-          face.loops.forEach(loop => {
-            if (isFlatHorizontal(loop)) {
-              flatFaceCount++;
-              solidFlatFaces++;
+        solid.faces.forEach((face, faceIndex) => {
+          face.loops.forEach((loop, loopIndex) => {
+            // Skip empty loops
+            if (loop.length === 0) return;
+            
+            totalLoops++;
+            
+            // Check if it's a 4-line loop
+            if (loop.length === 4) {
+              fourLineLoops++;
+              
+              // Check if it's horizontal
+              if (isHorizontalLoop(loop)) {
+                horizontalRectangles.push({
+                  solidIndex,
+                  faceIndex,
+                  loopIndex,
+                  z: loop[0].start.z
+                });
+              }
             }
           });
         });
-        
-        console.log(`  Solid #${solidIndex + 1}: ${solidFlatFaces} flat horizontal faces`);
       });
       
-      console.log(`  Total flat horizontal faces: ${flatFaceCount}\n`);
+      // Sort horizontal rectangles by z-value (ascending)
+      horizontalRectangles.sort((a, b) => a.z - b.z);
+      
+      // Print results
+      console.log(`\n  Summary:`);
+      console.log(`    Total loops: ${totalLoops}`);
+      console.log(`    4-line loops: ${fourLineLoops} (${((fourLineLoops / totalLoops) * 100).toFixed(1)}%)`);
+      console.log(`    Horizontal 4-line loops (exact z-value): ${horizontalRectangles.length} (${((horizontalRectangles.length / fourLineLoops) * 100).toFixed(1)}% of 4-line loops)`);
+      
+      console.log(`\n  Horizontal 4-line loops (sorted by z-value):`);
+      
+      // Group by z-value
+      const zGroups: { [z: string]: number } = {};
+      
+      horizontalRectangles.forEach(rect => {
+        const zKey = rect.z.toFixed(4);
+        if (!zGroups[zKey]) {
+          zGroups[zKey] = 0;
+        }
+        zGroups[zKey]++;
+      });
+      
+      // Print z-value groups
+      Object.entries(zGroups).forEach(([z, count]) => {
+        console.log(`    z = ${z}: ${count} horizontal rectangles`);
+      });
+      
+      console.log('');
     });
     
   } catch (error) {

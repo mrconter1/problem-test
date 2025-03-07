@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Stair Model Visualization</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #info {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0,0,0,0.5);
+            padding: 10px;
+            font-family: monospace;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">Loading stair model...</div>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <script>
+        // Set up the scene, camera, and renderer
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x333333);
+        
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, -20, 20);
+        camera.lookAt(0, 0, 0);
+        
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        
+        // Add orbit controls
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.25;
+        
+        // Add lights
+        const ambientLight = new THREE.AmbientLight(0x404040);
+        scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+        directionalLight.position.set(1, 1, 1);
+        scene.add(directionalLight);
+        
+        // Add a grid helper
+        const gridHelper = new THREE.GridHelper(100, 100);
+        scene.add(gridHelper);
+        
+        // Add axes helper
+        const axesHelper = new THREE.AxesHelper(5);
+        scene.add(axesHelper);
+        
+        // Function to create a rectangle from 4 points
+        function createRectangle(points, z, color) {
+            const shape = new THREE.Shape();
+            shape.moveTo(points[0].x, points[0].y);
+            shape.lineTo(points[1].x, points[1].y);
+            shape.lineTo(points[2].x, points[2].y);
+            shape.lineTo(points[3].x, points[3].y);
+            shape.lineTo(points[0].x, points[0].y);
+            
+            const geometry = new THREE.ShapeGeometry(shape);
+            const material = new THREE.MeshLambertMaterial({ 
+                color: color,
+                side: THREE.DoubleSide,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.position.z = z;
+            
+            return mesh;
+        }
+        
+        // Load the stair model
+        fetch('stair.json')
+            .then(response => response.json())
+            .then(data => {
+                // Handle both single object and array
+                const stairModels = Array.isArray(data) ? data : [data];
+                const stairModel = stairModels[0]; // Just visualize the first model
+                
+                const infoElement = document.getElementById('info');
+                infoElement.textContent = `Stair Model: ${stairModel.name} (ID: ${stairModel.id})`;
+                
+                // Center the model
+                const boundingBox = stairModel.boundingBox;
+                const centerX = (boundingBox.min.x + boundingBox.max.x) / 2;
+                const centerY = (boundingBox.min.y + boundingBox.max.y) / 2;
+                
+                // Find horizontal 4-line loops
+                let horizontalRectangles = [];
+                let colorIndex = 0;
+                const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff];
+                
+                stairModel.solids.forEach(solid => {
+                    solid.faces.forEach(face => {
+                        face.loops.forEach(loop => {
+                            // Check if it's a 4-line loop
+                            if (loop.length === 4) {
+                                // Check if all points have the same z-value
+                                const referenceZ = loop[0].start.z;
+                                let isHorizontal = true;
+                                
+                                for (const line of loop) {
+                                    if (line.start.z !== referenceZ || line.end.z !== referenceZ) {
+                                        isHorizontal = false;
+                                        break;
+                                    }
+                                }
+                                
+                                if (isHorizontal) {
+                                    // Extract the points
+                                    const points = [
+                                        { x: loop[0].start.x - centerX, y: loop[0].start.y - centerY },
+                                        { x: loop[1].start.x - centerX, y: loop[1].start.y - centerY },
+                                        { x: loop[2].start.x - centerX, y: loop[2].start.y - centerY },
+                                        { x: loop[3].start.x - centerX, y: loop[3].start.y - centerY }
+                                    ];
+                                    
+                                    // Create a rectangle and add it to the scene
+                                    const color = colors[colorIndex % colors.length];
+                                    const rectangle = createRectangle(points, referenceZ, color);
+                                    scene.add(rectangle);
+                                    
+                                    horizontalRectangles.push({
+                                        z: referenceZ,
+                                        mesh: rectangle
+                                    });
+                                    
+                                    colorIndex++;
+                                }
+                            }
+                        });
+                    });
+                });
+                
+                // Update info
+                infoElement.textContent += `\nFound ${horizontalRectangles.length} horizontal rectangles`;
+                
+                // Adjust camera to see the model
+                const bbox = new THREE.Box3();
+                scene.traverse(object => {
+                    if (object.isMesh) {
+                        bbox.expandByObject(object);
+                    }
+                });
+                
+                const center = bbox.getCenter(new THREE.Vector3());
+                const size = bbox.getSize(new THREE.Vector3());
+                
+                // Position camera to see the entire model
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const fov = camera.fov * (Math.PI / 180);
+                let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+                cameraZ *= 1.5; // Add some margin
+                
+                camera.position.set(center.x, center.y - cameraZ, center.z + cameraZ);
+                camera.lookAt(center);
+                controls.target.copy(center);
+                
+                // Animation loop
+                function animate() {
+                    requestAnimationFrame(animate);
+                    controls.update();
+                    renderer.render(scene, camera);
+                }
+                
+                animate();
+            })
+            .catch(error => {
+                console.error('Error loading stair model:', error);
+                document.getElementById('info').textContent = 'Error loading stair model: ' + error.message;
+            });
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html> 
