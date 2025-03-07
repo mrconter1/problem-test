@@ -178,11 +178,64 @@ export default function StairVisualizer() {
       renderer.domElement.requestPointerLock();
     });
     
+    // Right-click to exit pointer lock
+    renderer.domElement.addEventListener('mousedown', (event) => {
+      // Check if it's a right-click (button 2)
+      if (event.button === 2) {
+        console.log('Right mouse button clicked');
+        event.preventDefault(); // Prevent the default context menu
+        if (document.pointerLockElement === renderer.domElement) {
+          console.log('Exiting pointer lock via right-click');
+          document.exitPointerLock();
+        }
+      }
+    });
+    
+    // Prevent context menu from showing up
+    renderer.domElement.addEventListener('contextmenu', (event) => {
+      console.log('Context menu prevented');
+      event.preventDefault();
+    });
+    
     document.addEventListener('pointerlockchange', () => {
       const isLocked = document.pointerLockElement === renderer.domElement;
       const cameraInfoElement = document.getElementById('cameraInfo');
       if (cameraInfoElement) {
         cameraInfoElement.style.display = isLocked ? 'none' : 'block';
+      }
+      
+      // Add a visual indicator when controls are active
+      if (isLocked) {
+        // Add a small dot in the center of the screen to indicate active controls
+        const controlIndicator = document.createElement('div');
+        controlIndicator.id = 'controlIndicator';
+        controlIndicator.style.position = 'fixed';
+        controlIndicator.style.top = '50%';
+        controlIndicator.style.left = '50%';
+        controlIndicator.style.width = '4px';
+        controlIndicator.style.height = '4px';
+        controlIndicator.style.backgroundColor = 'white';
+        controlIndicator.style.borderRadius = '50%';
+        controlIndicator.style.transform = 'translate(-50%, -50%)';
+        controlIndicator.style.zIndex = '10001';
+        controlIndicator.style.pointerEvents = 'none';
+        document.body.appendChild(controlIndicator);
+      } else {
+        // Remove the indicator when controls are inactive
+        const controlIndicator = document.getElementById('controlIndicator');
+        if (controlIndicator) {
+          controlIndicator.remove();
+        }
+      }
+      
+      // Reset all movement states when exiting pointer lock
+      if (!isLocked) {
+        movement.forward = false;
+        movement.backward = false;
+        movement.left = false;
+        movement.right = false;
+        movement.up = false;
+        movement.down = false;
       }
     });
     
@@ -202,27 +255,39 @@ export default function StairVisualizer() {
     
     // Keyboard handlers
     document.addEventListener('keydown', (event) => {
-      switch (event.code) {
-        case 'KeyW': movement.forward = true; break;
-        case 'KeyS': movement.backward = true; break;
-        case 'KeyA': movement.left = true; break;
-        case 'KeyD': movement.right = true; break;
-        case 'Space': movement.up = true; break;
-        case 'ControlLeft': 
-          movement.down = true; 
-          event.preventDefault(); // Prevent browser from capturing Ctrl key
-          break;
+      // Only handle movement keys when in pointer lock mode
+      if (document.pointerLockElement === renderer.domElement) {
+        switch (event.code) {
+          case 'KeyW': movement.forward = true; break;
+          case 'KeyS': movement.backward = true; break;
+          case 'KeyA': movement.left = true; break;
+          case 'KeyD': movement.right = true; break;
+          case 'Space': movement.up = true; break;
+          case 'ControlLeft': 
+            movement.down = true; 
+            event.preventDefault(); // Prevent browser from capturing Ctrl key
+            break;
+        }
+      }
+      
+      // Always handle Escape key
+      if (event.code === 'Escape' && document.pointerLockElement === renderer.domElement) {
+        console.log('Exiting pointer lock via Escape key');
+        document.exitPointerLock();
       }
     });
     
     document.addEventListener('keyup', (event) => {
-      switch (event.code) {
-        case 'KeyW': movement.forward = false; break;
-        case 'KeyS': movement.backward = false; break;
-        case 'KeyA': movement.left = false; break;
-        case 'KeyD': movement.right = false; break;
-        case 'Space': movement.up = false; break;
-        case 'ControlLeft': movement.down = false; break;
+      // Only handle movement keys when in pointer lock mode
+      if (document.pointerLockElement === renderer.domElement) {
+        switch (event.code) {
+          case 'KeyW': movement.forward = false; break;
+          case 'KeyS': movement.backward = false; break;
+          case 'KeyA': movement.left = false; break;
+          case 'KeyD': movement.right = false; break;
+          case 'Space': movement.up = false; break;
+          case 'ControlLeft': movement.down = false; break;
+        }
       }
     });
     
@@ -545,6 +610,7 @@ export default function StairVisualizer() {
             <span>W/A/S/D:</span><span style={{ color: '#ffdd00' }}>Move</span>
             <span>Space:</span><span style={{ color: '#ffdd00' }}>Move up</span>
             <span>Left Ctrl:</span><span style={{ color: '#ffdd00' }}>Move down</span>
+            <span>Right Click/Esc:</span><span style={{ color: '#ffdd00' }}>Exit controls</span>
           </div>
           <div style={{ 
             marginTop: '8px', 
@@ -553,7 +619,7 @@ export default function StairVisualizer() {
             padding: '8px', 
             borderRadius: '4px' 
           }}>
-            Click to enable mouse control
+            Left Click to enable mouse control
           </div>
         </div>
       </div>
