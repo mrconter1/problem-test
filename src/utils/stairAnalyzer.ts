@@ -12,7 +12,10 @@ interface Line {
   end: Point;
 }
 
-interface Loop extends Array<Line> {}
+interface Loop extends Array<Line> {
+  // This interface extends Array<Line> with no additional members
+  // but we need it for type clarity in our application
+}
 
 interface Face {
   loops: Loop[];
@@ -32,7 +35,10 @@ interface StairModel {
   solids: Solid[];
 }
 
-// Calculate the length of a line
+/**
+ * Calculates the length of a line in 3D space.
+ * This function is provided for future use in more advanced analyses.
+ */
 function calculateLineLength(line: Line): number {
   const dx = line.end.x - line.start.x;
   const dy = line.end.y - line.start.y;
@@ -73,7 +79,7 @@ function analyzeStairs(filePath: string): void {
       console.log(`Stair Model #${index + 1} (ID: ${stairModel.id}, Name: ${stairModel.name})`);
       
       // Store horizontal 4-line loops
-      let horizontalRectangles: { 
+      const horizontalRectangles: { 
         solidIndex: number;
         faceIndex: number;
         loopIndex: number;

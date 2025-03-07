@@ -14,7 +14,10 @@ interface Line {
   end: Point;
 }
 
-interface Loop extends Array<Line> {}
+interface Loop extends Array<Line> {
+  // This interface extends Array<Line> with no additional members
+  // but we need it for type clarity in our application
+}
 
 interface Face {
   loops: Loop[];
@@ -40,6 +43,9 @@ export default function StairVisualizer() {
   useEffect(() => {
     if (!containerRef.current) return;
     
+    // Store a reference to the container element for cleanup
+    const container = containerRef.current;
+    
     console.log('Initializing Three.js scene...');
     
     // Set up the scene, camera, and renderer
@@ -53,7 +59,7 @@ export default function StairVisualizer() {
     
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    containerRef.current.appendChild(renderer.domElement);
+    container.appendChild(renderer.domElement);
     
     // Add lights
     const ambientLight = new THREE.AmbientLight(0x404040);
@@ -375,7 +381,7 @@ export default function StairVisualizer() {
           console.log('Model center:', { centerX, centerY });
           
           // Find horizontal 4-line loops
-          let horizontalRectangles = [];
+          const horizontalRectangles = [];
           let colorIndex = 0;
           const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff, 0x00ffff];
           
@@ -492,8 +498,8 @@ export default function StairVisualizer() {
       document.removeEventListener('keydown', () => {});
       document.removeEventListener('keyup', () => {});
       
-      if (containerRef.current && renderer.domElement) {
-        containerRef.current.removeChild(renderer.domElement);
+      if (container && renderer.domElement) {
+        container.removeChild(renderer.domElement);
       }
       
       renderer.dispose();
