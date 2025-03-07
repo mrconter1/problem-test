@@ -1,29 +1,60 @@
-# Finding the Smallest Stair Step
+# Stair Model Visualization
 
-I needed to identify the stair step with the smallest depth in architectural 3D models.
+This project provides an interactive 3D visualization of stair models, allowing users to analyze stair steps in architectural designs.
 
-## My Process
+## Features
 
-1. First, I examined the attached 3D stair models to get familiar with how they look in three dimensions.
+- Interactive 3D visualization of stair models
+- FPS-style camera controls for intuitive navigation
+- Ability to switch between different stair models
+- Identification of horizontal stair steps with color coding
+- Coordinate system with labeled axes
 
-2. After examining the data format, I discovered:
-   - The file contains 3D data for multiple stairs (although the filename "Stair" is singular - sneaky!)
-   - The "loops" data object contains the lines that make up each face
-   - From my experience with 3D modeling, I assumed z dimension represents the vertical direction (up and down)
+## Getting Started
 
-3. I spent some time grasping the core problem. Initially considering line-fitting approaches, I realized the challenge perhaps is a bit more simple. If I can identify the stair step faces it would be trivial to measure the depth of each face.
+First, run the development server:
 
-4. So... What is a stair step? It reminds me of when I tried to define what a tree is. A tree is a tall vertical thin object. A stair step is a flat, horizontal surface and often rectangular in shape. In other words, a stair step can be defined as:
-   - A flat, horizontal surface
-   - Often rectangular in shape
-   - "Human-sized"
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
+```
 
-5. Now when we have a definition a good idea would be to divide the problem into smaller problems. Let us start by finding all flat horizontal faces. My approach to finding flat faces:
-   ```
-   For each loop object:
-     Get z value for the first point (start of first line)
-     Check all other points in the loop
-     If any z value is different, discard the loop, otherwise keep it
-   ```
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the visualization.
 
-6. I used AI to write a simple TypeScript script (`stairAnalyzer.ts`) that reads the stair JSON file and prints out the number of flat horizontal faces found per stair object and per solid. This modular approach will make it easier to build upon for the next steps in our analysis.
+## Controls
+
+- **Mouse**: Look around
+- **W/A/S/D**: Move horizontally
+- **Space**: Move up
+- **Left Ctrl**: Move down
+- **Click**: Lock pointer for camera control (ESC to exit)
+
+## Technical Details
+
+This project is built with:
+
+- [Next.js](https://nextjs.org) - React framework
+- [Three.js](https://threejs.org) - 3D visualization library
+- [TypeScript](https://www.typescriptlang.org) - Type-safe JavaScript
+
+The visualization identifies horizontal surfaces in 3D stair models by analyzing the z-coordinates of points in each face loop.
+
+## Deployment
+
+The easiest way to deploy this app is to use the [Vercel Platform](https://vercel.com/new) from the creators of Next.js.
+
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
