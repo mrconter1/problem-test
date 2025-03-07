@@ -441,6 +441,53 @@ export const RenderingModeToggle: React.FC<RenderingModeToggleProps> = ({
             Uppermost Rectangles Only
           </label>
         </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ position: 'relative', width: '20px', height: '20px', marginRight: '12px' }}>
+            <input
+              type="radio"
+              id="aspect-ratio-rectangles"
+              name="renderingMode"
+              checked={currentMode === RenderingMode.ASPECT_RATIO_RECTANGLES}
+              onChange={() => onModeChange(RenderingMode.ASPECT_RATIO_RECTANGLES)}
+              style={{ 
+                opacity: 0,
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                margin: 0,
+                cursor: 'pointer'
+              }}
+            />
+            <div style={{ 
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '18px',
+              height: '18px',
+              borderRadius: '50%',
+              border: '2px solid #4a90e2',
+              backgroundColor: 'transparent',
+              boxSizing: 'border-box',
+              pointerEvents: 'none'
+            }}/>
+            <div style={{ 
+              position: 'absolute',
+              top: '4px',
+              left: '4px',
+              width: '10px',
+              height: '10px',
+              borderRadius: '50%',
+              backgroundColor: '#4a90e2',
+              opacity: currentMode === RenderingMode.ASPECT_RATIO_RECTANGLES ? 1 : 0,
+              transition: 'opacity 0.2s',
+              pointerEvents: 'none'
+            }}/>
+          </div>
+          <label htmlFor="aspect-ratio-rectangles" style={{ cursor: 'pointer' }}>
+            Aspect Ratio 1:3.5-1:4
+          </label>
+        </div>
       </div>
     </div>
   );

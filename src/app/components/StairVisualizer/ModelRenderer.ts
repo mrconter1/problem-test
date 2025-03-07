@@ -345,6 +345,60 @@ function filterUppermostRectangles(
 }
 
 /**
+ * Calculate the aspect ratio of a rectangle
+ * @param points The points of the rectangle
+ * @returns An object with the ratio (always >= 1.0), shortSide, and longSide
+ */
+function calculateRectangleAspectRatio(points: Point[]): { 
+  ratio: number; 
+  shortSide: number; 
+  longSide: number;
+  width: number;
+  length: number;
+} {
+  if (points.length !== 4) {
+    console.warn('Cannot calculate aspect ratio: not a rectangle');
+    return { ratio: 0, shortSide: 0, longSide: 0, width: 0, length: 0 };
+  }
+  
+  // Calculate the lengths of all sides
+  const distances: number[] = [];
+  
+  for (let i = 0; i < points.length; i++) {
+    const nextIndex = (i + 1) % points.length;
+    const p1 = points[i];
+    const p2 = points[nextIndex];
+    
+    const distance = Math.sqrt(
+      Math.pow(p2.x - p1.x, 2) +
+      Math.pow(p2.y - p1.y, 2) +
+      Math.pow(p2.z - p1.z, 2)
+    );
+    
+    distances.push(distance);
+  }
+  
+  // For a rectangle, opposite sides should have similar lengths
+  // Sort the distances to find shortest and longest sides
+  distances.sort((a, b) => a - b);
+  
+  // Average the similar sides (accounting for small differences due to numerical precision)
+  const shortSide = (distances[0] + distances[1]) / 2;
+  const longSide = (distances[2] + distances[3]) / 2;
+  
+  // Calculate aspect ratio (always >= 1.0)
+  const ratio = longSide / shortSide;
+  
+  return { 
+    ratio, 
+    shortSide, 
+    longSide,
+    width: shortSide,
+    length: longSide
+  };
+}
+
+/**
  * Visualize a stair model
  */
 export function visualizeStairModel(
@@ -402,6 +456,7 @@ export function visualizeStairModel(
   let closedRectangleCount = 0;
   let centerMarkersCount = 0;
   let uppermostRectanglesCount = 0;
+  let aspectRatioRectanglesCount = 0;
   let totalFaceCount = 0;
   
   const colors = [0x4287f5, 0x42f5a7, 0xf542cb, 0xf5a742, 0xf54242, 0x42f5dd];
@@ -419,8 +474,9 @@ export function visualizeStairModel(
     height: boundingBox.max.z - boundingBox.min.z
   });
   
-  // Special handling for UPPERMOST_RECTANGLES mode to filter stacked rectangles
-  if (renderingMode === RenderingMode.UPPERMOST_RECTANGLES) {
+  // Special handling for UPPERMOST_RECTANGLES and ASPECT_RATIO_RECTANGLES modes
+  if (renderingMode === RenderingMode.UPPERMOST_RECTANGLES || 
+      renderingMode === RenderingMode.ASPECT_RATIO_RECTANGLES) {
     // First pass: collect all closed horizontal rectangles
     const allRectangles: Array<{
       index: number;
@@ -430,6 +486,7 @@ export function visualizeStairModel(
       center: { x: number; y: number; z: number };
       points: Point[];
       color: number;
+      aspectRatio?: number;
     }> = [];
     
     let rectangleIndex = 0;
@@ -449,6 +506,13 @@ export function visualizeStairModel(
             const color = colors[colorIndex % colors.length];
             colorIndex++;
             
+            // Calculate aspect ratio if needed
+            let aspectRatio = undefined;
+            if (renderingMode === RenderingMode.ASPECT_RATIO_RECTANGLES) {
+              const ratioInfo = calculateRectangleAspectRatio(points);
+              aspectRatio = ratioInfo.ratio;
+            }
+            
             allRectangles.push({
               index: rectangleIndex++,
               loopIndex,
@@ -456,7 +520,8 @@ export function visualizeStairModel(
               faceIndex,
               center,
               points,
-              color
+              color,
+              aspectRatio
             });
           }
         });
@@ -466,15 +531,31 @@ export function visualizeStairModel(
     console.log(`Found ${allRectangles.length} closed horizontal rectangles`);
     
     // Filter to keep only uppermost rectangles
-    const indicesToKeep = filterUppermostRectangles(allRectangles);
+    const uppermostRectIndices = filterUppermostRectangles(allRectangles);
+    const uppermostRectangles = uppermostRectIndices.map(idx => allRectangles[idx]);
     
-    console.log(`After filtering, keeping ${indicesToKeep.length} uppermost rectangles`);
-    uppermostRectanglesCount = indicesToKeep.length;
+    console.log(`After filtering, keeping ${uppermostRectangles.length} uppermost rectangles`);
+    uppermostRectanglesCount = uppermostRectangles.length;
+    
+    // For aspect ratio mode, apply additional aspect ratio filter
+    let rectanglesToRender = uppermostRectangles;
+    
+    if (renderingMode === RenderingMode.ASPECT_RATIO_RECTANGLES) {
+      const minRatio = 3.5;  // 1:3.5
+      const maxRatio = 4.0;  // 1:4
+      
+      // Filter rectangles by aspect ratio
+      rectanglesToRender = uppermostRectangles.filter(rect => {
+        if (rect.aspectRatio === undefined) return false;
+        return rect.aspectRatio >= minRatio && rect.aspectRatio <= maxRatio;
+      });
+      
+      aspectRatioRectanglesCount = rectanglesToRender.length;
+      console.log(`After aspect ratio filtering (${minRatio}:1 to ${maxRatio}:1), keeping ${aspectRatioRectanglesCount} rectangles`);
+    }
     
     // Render the filtered rectangles
-    indicesToKeep.forEach(rectIndex => {
-      const rectangle = allRectangles[rectIndex];
-      
+    rectanglesToRender.forEach(rectangle => {
       // Convert to 2D points for ShapeGeometry, centered on model center
       const points2D = rectangle.points.map(p => ({ 
         x: p.x - centerX, 
@@ -489,6 +570,12 @@ export function visualizeStairModel(
       
       // Add to model group
       modelGroup.add(rectangleMesh);
+      
+      // If in aspect ratio mode, add a label with the aspect ratio
+      if (renderingMode === RenderingMode.ASPECT_RATIO_RECTANGLES && rectangle.aspectRatio !== undefined) {
+        // Will be implemented with a text label showing the aspect ratio
+        console.log(`Rectangle with aspect ratio: ${rectangle.aspectRatio.toFixed(2)}`);
+      }
     });
     
     // Create ghost meshes for all non-selected faces
@@ -500,15 +587,15 @@ export function visualizeStairModel(
           const isHorizontalRectangle = isHorizontalLoop(loop);
           
           if (isRectangle && isHorizontalRectangle) {
-            // Find if this is one of our rendered rectangles
-            const matchIndex = allRectangles.findIndex(rect => 
+            // Check if this is one of our rendered rectangles
+            const isRendered = rectanglesToRender.some(rect => 
               rect.solidIndex === solidIndex && 
               rect.faceIndex === faceIndex && 
               rect.loopIndex === loopIndex
             );
             
             // If this rectangle is rendered, skip creating a ghost mesh
-            if (matchIndex >= 0 && indicesToKeep.includes(matchIndex)) {
+            if (isRendered) {
               return;
             }
           }
@@ -878,6 +965,8 @@ export function visualizeStairModel(
     infoContent += `Showing ${centerMarkersCount} closed horizontal rectangles with center markers`;
   } else if (renderingMode === RenderingMode.UPPERMOST_RECTANGLES) {
     infoContent += `Showing ${uppermostRectanglesCount} uppermost closed horizontal rectangles`;
+  } else if (renderingMode === RenderingMode.ASPECT_RATIO_RECTANGLES) {
+    infoContent += `Showing ${aspectRatioRectanglesCount} rectangles with aspect ratio between 1:3.5 and 1:4`;
   }
   updateInfoText(infoContent);
   
@@ -889,6 +978,8 @@ export function visualizeStairModel(
     return closedRectangleCount;
   } else if (renderingMode === RenderingMode.UPPERMOST_RECTANGLES) {
     return uppermostRectanglesCount;
+  } else if (renderingMode === RenderingMode.ASPECT_RATIO_RECTANGLES) {
+    return aspectRatioRectanglesCount;
   }
   return totalFaceCount;
 }
