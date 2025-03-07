@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 interface Point {
@@ -39,6 +39,9 @@ interface StairModel {
 
 export default function StairVisualizer() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [infoText, setInfoText] = useState('Loading stair model...');
   
   useEffect(() => {
     if (!containerRef.current) return;
@@ -349,26 +352,43 @@ export default function StairVisualizer() {
         const stairModels: StairModel[] = Array.isArray(data) ? data : [data];
         console.log(`Found ${stairModels.length} stair models`);
         
-        // Populate the dropdown
-        const modelSelect = document.getElementById('modelSelect') as HTMLSelectElement;
-        if (modelSelect) {
+        // Populate the radio buttons
+        const modelRadioButtons = document.getElementById('modelRadioButtons');
+        if (modelRadioButtons) {
           // Clear existing options
-          while (modelSelect.firstChild) {
-            modelSelect.removeChild(modelSelect.firstChild);
+          while (modelRadioButtons.firstChild) {
+            modelRadioButtons.removeChild(modelRadioButtons.firstChild);
           }
           
           stairModels.forEach((model, index) => {
-            const option = document.createElement('option');
-            option.value = index.toString();
-            option.textContent = `${model.name} (ID: ${model.id})`;
-            modelSelect.appendChild(option);
-          });
-          
-          // Add event listener for dropdown changes
-          modelSelect.addEventListener('change', function(this: HTMLSelectElement) {
-            const selectedIndex = parseInt(this.value);
-            console.log(`Switching to model ${selectedIndex}: ${stairModels[selectedIndex].name}`);
-            visualizeStairModel(stairModels[selectedIndex]);
+            const radioContainer = document.createElement('div');
+            radioContainer.style.display = 'flex';
+            radioContainer.style.alignItems = 'center';
+            radioContainer.style.gap = '8px';
+            
+            const radioInput = document.createElement('input');
+            radioInput.type = 'radio';
+            radioInput.id = `model-${index}`;
+            radioInput.name = 'stairModel';
+            radioInput.value = index.toString();
+            radioInput.checked = index === 0; // Select the first model by default
+            
+            const radioLabel = document.createElement('label');
+            radioLabel.htmlFor = `model-${index}`;
+            radioLabel.textContent = `${model.name} (ID: ${model.id})`;
+            
+            radioContainer.appendChild(radioInput);
+            radioContainer.appendChild(radioLabel);
+            modelRadioButtons.appendChild(radioContainer);
+            
+            // Add event listener for radio button changes
+            radioInput.addEventListener('change', function() {
+              if (this.checked) {
+                const selectedIndex = parseInt(this.value);
+                console.log(`Switching to model ${selectedIndex}: ${stairModels[selectedIndex].name}`);
+                visualizeStairModel(stairModels[selectedIndex]);
+              }
+            });
           });
         }
         
@@ -574,7 +594,7 @@ Found ${horizontalRectangles.length} horizontal rectangles`;
             boxShadow: '0 4px 8px rgba(0,0,0,0.5)'
           }}
         >
-          Loading stair model...
+          {infoText}
         </div>
         
         {/* Controls panel */}
@@ -587,39 +607,20 @@ Found ${horizontalRectangles.length} horizontal rectangles`;
             color: 'white',
             fontFamily: 'sans-serif',
             pointerEvents: 'auto',
-            backgroundColor: 'rgba(0,0,0,0.8)',
-            padding: '16px',
-            minWidth: '250px',
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            padding: '12px',
             zIndex: 10000,
-            borderRadius: '8px',
-            border: '1px solid #666',
-            boxShadow: '0 4px 8px rgba(0,0,0,0.5)'
+            borderRadius: '4px',
+            border: '1px solid rgba(255,255,255,0.2)',
+            fontSize: '14px'
           }}
         >
-          <label 
-            htmlFor="modelSelect" 
-            style={{
-              display: 'block',
-              marginBottom: '8px',
-              fontWeight: 'bold',
-              fontSize: '18px'
-            }}
-          >
+          <div style={{ marginBottom: '8px', fontWeight: 'bold' }}>
             Select Stair Model:
-          </label>
-          <select 
-            id="modelSelect"
-            style={{
-              width: '100%',
-              padding: '8px',
-              color: 'white',
-              backgroundColor: '#444',
-              border: '1px solid #666',
-              borderRadius: '4px'
-            }}
-          >
-            {/* Options will be populated by JavaScript */}
-          </select>
+          </div>
+          <div id="modelRadioButtons" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {/* Radio buttons will be populated by JavaScript */}
+          </div>
         </div>
         
         {/* Camera controls info */}
