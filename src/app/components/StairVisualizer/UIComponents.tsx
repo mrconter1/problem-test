@@ -189,12 +189,55 @@ export const RenderingModeToggle: React.FC<RenderingModeToggleProps> = ({
   currentMode, 
   onModeChange 
 }) => {
+  // State to track whether the panel is expanded or collapsed
+  const [isCollapsed, setIsCollapsed] = React.useState(false);
+  
+  // Define render modes with descriptions for tooltips
+  const renderModes = [
+    { 
+      id: 'all-faces', 
+      mode: RenderingMode.ALL_FACES, 
+      label: 'All Faces',
+      description: 'Shows all faces of the model'
+    },
+    { 
+      id: 'flat-rectangles', 
+      mode: RenderingMode.FLAT_RECTANGLES, 
+      label: 'Horizontal Rectangles',
+      description: 'Highlights only the horizontal rectangular faces'
+    },
+    { 
+      id: 'closed-rectangles', 
+      mode: RenderingMode.CLOSED_RECTANGLES, 
+      label: 'Closed Horizontal Rectangles',
+      description: 'Shows only rectangles that are properly closed (4 connected lines)'
+    },
+    { 
+      id: 'uppermost-rectangles', 
+      mode: RenderingMode.UPPERMOST_RECTANGLES, 
+      label: 'Uppermost Rectangles',
+      description: 'Keeps only the topmost rectangle when multiple are stacked'
+    },
+    { 
+      id: 'aspect-ratio-rectangles', 
+      mode: RenderingMode.ASPECT_RATIO_RECTANGLES, 
+      label: 'Aspect Ratio 1:3.5-1:4',
+      description: 'Filters rectangles to only those with aspect ratio between 1:3.5 and 1:4'
+    },
+    { 
+      id: 'long-side-lines', 
+      mode: RenderingMode.LONG_SIDE_LINES, 
+      label: 'Measure Step Width',
+      description: 'Extracts long sides from filtered rectangles and measures the distance between them'
+    }
+  ];
+  
   return (
     <div style={{
       position: 'absolute',
       top: '16px',
       right: '16px',
-      padding: '16px',
+      maxWidth: '300px',
       backgroundColor: 'rgba(0,0,0,0.8)',
       color: 'white',
       borderRadius: '8px',
@@ -202,293 +245,160 @@ export const RenderingModeToggle: React.FC<RenderingModeToggleProps> = ({
       zIndex: 1000,
       fontSize: '14px',
       border: '1px solid #666',
-      boxShadow: '0 4px 8px rgba(0,0,0,0.5)'
+      boxShadow: '0 4px 8px rgba(0,0,0,0.5)',
+      transition: 'all 0.3s ease'
     }}>
-      <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', fontWeight: 'bold' }}>Rendering Mode</h3>
-      
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div style={{ position: 'relative', width: '20px', height: '20px', marginRight: '12px' }}>
-            <input
-              type="radio"
-              id="all-faces"
-              name="renderingMode"
-              checked={currentMode === RenderingMode.ALL_FACES}
-              onChange={() => onModeChange(RenderingMode.ALL_FACES)}
-              style={{ 
-                opacity: 0,
-                position: 'absolute',
-                width: '100%',
-                height: '100%',
-                margin: 0,
-                cursor: 'pointer'
-              }}
-            />
-            <div style={{ 
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '18px',
-              height: '18px',
-              borderRadius: '50%',
-              border: '2px solid #4a90e2',
-              backgroundColor: 'transparent',
-              boxSizing: 'border-box',
-              pointerEvents: 'none'
-            }}/>
-            <div style={{ 
-              position: 'absolute',
-              top: '4px',
-              left: '4px',
-              width: '10px',
-              height: '10px',
-              borderRadius: '50%',
-              backgroundColor: '#4a90e2',
-              opacity: currentMode === RenderingMode.ALL_FACES ? 1 : 0,
-              transition: 'opacity 0.2s',
-              pointerEvents: 'none'
-            }}/>
-          </div>
-          <label htmlFor="all-faces" style={{ cursor: 'pointer' }}>
-            All Faces
-          </label>
-        </div>
-        
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div style={{ position: 'relative', width: '20px', height: '20px', marginRight: '12px' }}>
-            <input
-              type="radio"
-              id="flat-rectangles"
-              name="renderingMode"
-              checked={currentMode === RenderingMode.FLAT_RECTANGLES}
-              onChange={() => onModeChange(RenderingMode.FLAT_RECTANGLES)}
-              style={{ 
-                opacity: 0,
-                position: 'absolute',
-                width: '100%',
-                height: '100%',
-                margin: 0,
-                cursor: 'pointer'
-              }}
-            />
-            <div style={{ 
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '18px',
-              height: '18px',
-              borderRadius: '50%',
-              border: '2px solid #4a90e2',
-              backgroundColor: 'transparent',
-              boxSizing: 'border-box',
-              pointerEvents: 'none'
-            }}/>
-            <div style={{ 
-              position: 'absolute',
-              top: '4px',
-              left: '4px',
-              width: '10px',
-              height: '10px',
-              borderRadius: '50%',
-              backgroundColor: '#4a90e2',
-              opacity: currentMode === RenderingMode.FLAT_RECTANGLES ? 1 : 0,
-              transition: 'opacity 0.2s',
-              pointerEvents: 'none'
-            }}/>
-          </div>
-          <label htmlFor="flat-rectangles" style={{ cursor: 'pointer' }}>
-            Horizontal Rectangles
-          </label>
-        </div>
-        
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div style={{ position: 'relative', width: '20px', height: '20px', marginRight: '12px' }}>
-            <input
-              type="radio"
-              id="closed-rectangles"
-              name="renderingMode"
-              checked={currentMode === RenderingMode.CLOSED_RECTANGLES}
-              onChange={() => onModeChange(RenderingMode.CLOSED_RECTANGLES)}
-              style={{ 
-                opacity: 0,
-                position: 'absolute',
-                width: '100%',
-                height: '100%',
-                margin: 0,
-                cursor: 'pointer'
-              }}
-            />
-            <div style={{ 
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '18px',
-              height: '18px',
-              borderRadius: '50%',
-              border: '2px solid #4a90e2',
-              backgroundColor: 'transparent',
-              boxSizing: 'border-box',
-              pointerEvents: 'none'
-            }}/>
-            <div style={{ 
-              position: 'absolute',
-              top: '4px',
-              left: '4px',
-              width: '10px',
-              height: '10px',
-              borderRadius: '50%',
-              backgroundColor: '#4a90e2',
-              opacity: currentMode === RenderingMode.CLOSED_RECTANGLES ? 1 : 0,
-              transition: 'opacity 0.2s',
-              pointerEvents: 'none'
-            }}/>
-          </div>
-          <label htmlFor="closed-rectangles" style={{ cursor: 'pointer' }}>
-            Closed Horizontal Rectangles
-          </label>
-        </div>
-        
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div style={{ position: 'relative', width: '20px', height: '20px', marginRight: '12px' }}>
-            <input
-              type="radio"
-              id="uppermost-rectangles"
-              name="renderingMode"
-              checked={currentMode === RenderingMode.UPPERMOST_RECTANGLES}
-              onChange={() => onModeChange(RenderingMode.UPPERMOST_RECTANGLES)}
-              style={{ 
-                opacity: 0,
-                position: 'absolute',
-                width: '100%',
-                height: '100%',
-                margin: 0,
-                cursor: 'pointer'
-              }}
-            />
-            <div style={{ 
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '18px',
-              height: '18px',
-              borderRadius: '50%',
-              border: '2px solid #4a90e2',
-              backgroundColor: 'transparent',
-              boxSizing: 'border-box',
-              pointerEvents: 'none'
-            }}/>
-            <div style={{ 
-              position: 'absolute',
-              top: '4px',
-              left: '4px',
-              width: '10px',
-              height: '10px',
-              borderRadius: '50%',
-              backgroundColor: '#4a90e2',
-              opacity: currentMode === RenderingMode.UPPERMOST_RECTANGLES ? 1 : 0,
-              transition: 'opacity 0.2s',
-              pointerEvents: 'none'
-            }}/>
-          </div>
-          <label htmlFor="uppermost-rectangles" style={{ cursor: 'pointer' }}>
-            Uppermost Rectangles Only
-          </label>
-        </div>
-        
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div style={{ position: 'relative', width: '20px', height: '20px', marginRight: '12px' }}>
-            <input
-              type="radio"
-              id="aspect-ratio-rectangles"
-              name="renderingMode"
-              checked={currentMode === RenderingMode.ASPECT_RATIO_RECTANGLES}
-              onChange={() => onModeChange(RenderingMode.ASPECT_RATIO_RECTANGLES)}
-              style={{ 
-                opacity: 0,
-                position: 'absolute',
-                width: '100%',
-                height: '100%',
-                margin: 0,
-                cursor: 'pointer'
-              }}
-            />
-            <div style={{ 
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '18px',
-              height: '18px',
-              borderRadius: '50%',
-              border: '2px solid #4a90e2',
-              backgroundColor: 'transparent',
-              boxSizing: 'border-box',
-              pointerEvents: 'none'
-            }}/>
-            <div style={{ 
-              position: 'absolute',
-              top: '4px',
-              left: '4px',
-              width: '10px',
-              height: '10px',
-              borderRadius: '50%',
-              backgroundColor: '#4a90e2',
-              opacity: currentMode === RenderingMode.ASPECT_RATIO_RECTANGLES ? 1 : 0,
-              transition: 'opacity 0.2s',
-              pointerEvents: 'none'
-            }}/>
-          </div>
-          <label htmlFor="aspect-ratio-rectangles" style={{ cursor: 'pointer' }}>
-            Aspect Ratio 1:3.5-1:4
-          </label>
-        </div>
-        
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div style={{ position: 'relative', width: '20px', height: '20px', marginRight: '12px' }}>
-            <input
-              type="radio"
-              id="long-side-lines"
-              name="renderingMode"
-              checked={currentMode === RenderingMode.LONG_SIDE_LINES}
-              onChange={() => onModeChange(RenderingMode.LONG_SIDE_LINES)}
-              style={{ 
-                opacity: 0,
-                position: 'absolute',
-                width: '100%',
-                height: '100%',
-                margin: 0,
-                cursor: 'pointer'
-              }}
-            />
-            <div style={{ 
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '18px',
-              height: '18px',
-              borderRadius: '50%',
-              border: '2px solid #4a90e2',
-              backgroundColor: 'transparent',
-              boxSizing: 'border-box',
-              pointerEvents: 'none'
-            }}/>
-            <div style={{ 
-              position: 'absolute',
-              top: '4px',
-              left: '4px',
-              width: '10px',
-              height: '10px',
-              borderRadius: '50%',
-              backgroundColor: '#4a90e2',
-              opacity: currentMode === RenderingMode.LONG_SIDE_LINES ? 1 : 0,
-              transition: 'opacity 0.2s',
-              pointerEvents: 'none'
-            }}/>
-          </div>
-          <label htmlFor="long-side-lines" style={{ cursor: 'pointer' }}>
-            Long Side Lines
-          </label>
+      {/* Header with collapse button */}
+      <div 
+        style={{
+          padding: '12px 16px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderBottom: isCollapsed ? 'none' : '1px solid #555',
+          cursor: 'pointer'
+        }}
+        onClick={() => setIsCollapsed(!isCollapsed)}
+      >
+        <h3 style={{ 
+          margin: 0, 
+          fontSize: '16px', 
+          fontWeight: 'bold', 
+          display: 'flex', 
+          alignItems: 'center' 
+        }}>
+          <span style={{ marginRight: '8px' }}>🔍</span> 
+          Filter Pipeline
+          <span style={{ 
+            fontSize: '12px', 
+            color: '#aaa', 
+            marginLeft: '8px',
+            fontWeight: 'normal'
+          }}>
+            (Click to {isCollapsed ? 'expand' : 'collapse'})
+          </span>
+        </h3>
+        <div style={{ 
+          transform: isCollapsed ? 'rotate(180deg)' : 'rotate(0deg)',
+          transition: 'transform 0.3s ease'
+        }}>
+          ▼
         </div>
       </div>
+      
+      {/* Collapsible content */}
+      {!isCollapsed && (
+        <div style={{ padding: '16px' }}>
+          <p style={{ 
+            margin: '0 0 12px 0', 
+            fontSize: '13px', 
+            color: '#ccc',
+            lineHeight: '1.4'
+          }}>
+            Select a filter level below. Each step refines the previous filter's results:
+          </p>
+          
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column',
+            gap: '12px',
+            maxHeight: '70vh',
+            overflowY: 'auto',
+            padding: '0 4px'
+          }}>
+            {renderModes.map((mode, index) => (
+              <div 
+                key={mode.id}
+                style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column'
+                }}
+              >
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  padding: '8px 12px',
+                  borderRadius: '6px',
+                  backgroundColor: currentMode === mode.mode ? 'rgba(74, 144, 226, 0.3)' : 'transparent',
+                  transition: 'background-color 0.2s',
+                  cursor: 'pointer',
+                  position: 'relative'
+                }}
+                onClick={() => onModeChange(mode.mode)}
+                title={mode.description}
+                >
+                  {/* Step number */}
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    minWidth: '24px',
+                    height: '24px',
+                    backgroundColor: currentMode === mode.mode ? '#4a90e2' : '#555',
+                    color: 'white',
+                    borderRadius: '50%',
+                    marginRight: '12px',
+                    fontWeight: 'bold',
+                    fontSize: '12px',
+                    transition: 'background-color 0.2s'
+                  }}>
+                    {index + 1}
+                  </div>
+                  
+                  {/* Label */}
+                  <div>
+                    <div style={{ 
+                      fontWeight: currentMode === mode.mode ? 'bold' : 'normal',
+                      transition: 'font-weight 0.2s'
+                    }}>
+                      {mode.label}
+                    </div>
+                    
+                    {/* Description only shows for active item */}
+                    {currentMode === mode.mode && (
+                      <div style={{ 
+                        fontSize: '11px', 
+                        color: '#aaa',
+                        marginTop: '4px',
+                        transition: 'all 0.3s',
+                        maxWidth: '200px'
+                      }}>
+                        {mode.description}
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Active indicator */}
+                  {currentMode === mode.mode && (
+                    <div style={{ 
+                      position: 'absolute',
+                      right: '8px',
+                      color: '#4a90e2',
+                      fontSize: '16px',
+                      fontWeight: 'bold'
+                    }}>
+                      ✓
+                    </div>
+                  )}
+                </div>
+                
+                {/* Arrow down (not for the last item) */}
+                {index < renderModes.length - 1 && (
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    margin: '4px 0',
+                    color: '#888',
+                    fontSize: '12px'
+                  }}>
+                    ⤷
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }; 
