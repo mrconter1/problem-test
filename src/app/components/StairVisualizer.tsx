@@ -82,18 +82,35 @@ export default function StairVisualizer() {
     const axesHelper = new THREE.AxesHelper(10);
     scene.add(axesHelper);
     
-    // Add axis labels using simple meshes instead of sprites
+    // Add axis labels using text sprites instead of boxes
     function createAxisLabel(text: string, position: THREE.Vector3, color: number): void {
-      const geometry = new THREE.BoxGeometry(1, 1, 1);
-      const material = new THREE.MeshBasicMaterial({ color });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.copy(position);
-      scene.add(mesh);
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if (!context) return;
+      
+      // Create a canvas texture for the text
+      canvas.width = 64;
+      canvas.height = 64;
+      
+      context.font = "Bold 40px Arial";
+      context.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+      context.fillText(text, 32, 32);
+      
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.needsUpdate = true;
+      
+      const material = new THREE.SpriteMaterial({ map: texture });
+      const sprite = new THREE.Sprite(material);
+      sprite.position.copy(position);
+      sprite.scale.set(2, 2, 1);
+      scene.add(sprite);
     }
     
-    createAxisLabel("X", new THREE.Vector3(12, 0, 0), 0xff0000);
-    createAxisLabel("Y", new THREE.Vector3(0, 12, 0), 0x00ff00);
-    createAxisLabel("Z", new THREE.Vector3(0, 0, 12), 0x0000ff);
+    createAxisLabel("X", new THREE.Vector3(11, 0, 0), 0xff0000);
+    createAxisLabel("Y", new THREE.Vector3(0, 11, 0), 0x00ff00);
+    createAxisLabel("Z", new THREE.Vector3(0, 0, 11), 0x0000ff);
     
     // Create model group
     const modelGroup = new THREE.Group();
