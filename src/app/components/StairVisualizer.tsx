@@ -381,6 +381,7 @@ export default function StairVisualizer() {
             modelGroup.remove(modelGroup.children[0]); 
           }
           
+          // Get the info element
           const infoElement = document.getElementById('info');
           if (infoElement) {
             infoElement.textContent = `Stair Model: ${stairModel.name} (ID: ${stairModel.id})`;
@@ -443,15 +444,10 @@ export default function StairVisualizer() {
           
           console.log(`Found ${horizontalRectangles.length} horizontal rectangles`);
           
-          // Update info
+          // Update info text
           if (infoElement) {
-            infoElement.textContent += `\nFound ${horizontalRectangles.length} horizontal rectangles`;
-            
-            // Add a legend explaining the coordinate system
-            infoElement.textContent += `\n\nCoordinate System:`;
-            infoElement.textContent += `\nX-axis (Red): Width`;
-            infoElement.textContent += `\nY-axis (Green): Depth`;
-            infoElement.textContent += `\nZ-axis (Blue): Height`;
+            infoElement.textContent = `Stair Model: ${stairModel.name} (ID: ${stairModel.id})
+Found ${horizontalRectangles.length} horizontal rectangles`;
           }
           
           // Position camera to see the model
