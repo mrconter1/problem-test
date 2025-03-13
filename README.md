@@ -89,6 +89,8 @@ Filters out broken (non-closed) loops where the geometry is not properly designe
 #### 4. UPPERMOST_RECTANGLES
 Each stair step is a cuboid and therefore has both a top and bottom face. This step filters out the bottom faces by examining each possible pair of remaining faces and checking if they are within a certain xy distance from each other. If they are, it keeps only the topmost face and discards the lower one.
 
+#### 5. ASPECT_RATIO_RECTANGLES
+Filters out stair step shaped faces by looking at the aspect ratio. For each rectangle, it calculates the average length of long sides and short sides, then determines the ratio between them. This approach further distinguishes actual stair steps from other horizontal surfaces like landings or platforms that have different proportions.
 
 ## Deployment
 
