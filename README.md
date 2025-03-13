@@ -86,6 +86,10 @@ Only keeps horizontal surfaces by filtering loops that have the same z-value. Th
 #### 3. CLOSED_RECTANGLES
 Filters out broken (non-closed) loops where the geometry is not properly designed (such as, in this case, the last step before the middle platform in each model). By focusing only on well-formed steps, we avoid the complexity of handling the countless ways a stair step could be incorrectly designed. This approach assumes that this tool is continuously used throughout the design process, allowing designers to correct issues as they arise.
 
+#### 4. UPPERMOST_RECTANGLES
+Each stair step is a cuboid and therefore has both a top and bottom face. This step filters out the bottom faces by examining each possible pair of remaining faces and checking if they are within a certain xy distance from each other. If they are, it keeps only the topmost face and discards the lower one.
+
+
 ## Deployment
 
 The application can be deployed using [Vercel](https://vercel.com/new) for a seamless experience.
