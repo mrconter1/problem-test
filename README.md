@@ -92,6 +92,9 @@ Each stair step is a cuboid and therefore has both a top and bottom face. This s
 #### 5. ASPECT_RATIO_RECTANGLES
 Filters out stair step shaped faces by looking at the aspect ratio. For each rectangle, it calculates the average length of long sides and short sides, then determines the ratio between them. This approach further distinguishes actual stair steps from other horizontal surfaces like landings or platforms that have different proportions.
 
+#### 6. LONG_SIDE_LINES
+If we assume that each remaining face is the top rectangle of a stair step cuboid, the depth would simply be the width (shorter dimension) of the rectangle. This step measures and visualizes these depths directly, creating visual indicators with dimension lines and clear text labels.
+
 ## Deployment
 
 The application can be deployed using [Vercel](https://vercel.com/new) for a seamless experience.
