@@ -76,19 +76,3 @@ The LONG_SIDE_LINES rendering mode (filter #6) is specialized for identifying an
 ## Deployment
 
 The application can be deployed using [Vercel](https://vercel.com/new) for a seamless experience.
-
-## Additional Resources
-
-- [Three.js Documentation](https://threejs.org/docs/)
-- [Next.js Documentation](https://nextjs.org/docs)
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
