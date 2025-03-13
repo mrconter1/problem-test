@@ -73,6 +73,19 @@ The visualization works by:
 
 The LONG_SIDE_LINES rendering mode (filter #6) is specialized for identifying and measuring correctly designed stair steps, displaying precise depth measurements for each step.
 
+### Rendering Mode Pipeline
+
+The visualization uses a progressive filtering approach, where each step builds upon the previous one:
+
+#### 1. ALL_FACES
+Reads and parses 3D data from the raw data files and renders a face for every loop in the model. This step serves as a baseline representation while also facilitating understanding of what the 3D data actually consists of. By visualizing the complete model, users can see the entire stair structure before any filtering is applied.
+
+#### 2. FLAT_RECTANGLES
+Only keeps horizontal surfaces by filtering loops that have the same z-value. This step identifies potential walking surfaces by isolating horizontal planes in the model. By focusing on flat surfaces, we begin to narrow down the areas that could represent actual stair steps.
+
+#### 3. CLOSED_RECTANGLES
+Filters out broken or non-closed loops where the geometry is not properly designed. Some loops in the model may be broken (such as in this case the last step before the middle platform in each model) where the loop is not closed or not designed correctly. This filtering is a conscious design choice to ensure we only work with well-formed geometries for accurate measurements. An alternative would be to try to either fix the geometry automatically somehow or to also try to identify incorrectly designed stair steps. The problem with trying to do that is that the number of possible ways you can incorrectly design a stair step is almost endless, so it would be a very complex problem to solve. An alternative is to simply filter them out as we do here and make sure that the designer uses this tool during the design process. This would allow us to both avoid having to create a complex workaround and still allow us to identify stair steps (due to the fact that the step therefore would be correctly designed)
+
 ## Deployment
 
 The application can be deployed using [Vercel](https://vercel.com/new) for a seamless experience.
