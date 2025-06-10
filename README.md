@@ -2,6 +2,8 @@
 
 This project provides an interactive 3D visualization tool for analyzing stair models in architectural designs, with a specific focus on validating stair step depth for safety compliance.
 
+![image](https://github.com/user-attachments/assets/4f5f777f-522d-4302-922a-6662ac065abd)
+
 ## Purpose
 
 The primary goal of this tool is to detect and measure stair step depths to validate if they meet the standard safety requirement of at least 25cm depth per step. The visualization provides intuitive interfaces for:
